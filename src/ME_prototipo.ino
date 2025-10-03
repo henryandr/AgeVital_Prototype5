@@ -66,7 +66,7 @@ Estado estado_actual = Estado::INICIO;
 volatile int screenMode = 0;
 const unsigned long INTERVALO_ENVIO = 15000;     // 15 segundos entre envíos
 const unsigned long INTERVALO_LECTURA = 2000;    // 2 segundos entre lecturas
-const unsigned long TIEMPO_INACTIVIDAD = 10000;  // 10 segundos para apagar pantalla
+const unsigned long TIEMPO_INACTIVIDAD = 1000000;  // 10 segundos para apagar pantalla
 const unsigned long DEBOUNCE_TIME = 300;         // 300 ms para debounce
 const unsigned long INTERVALO_REINTENTO = 60000; // 60 segundos para reintento
 const char *ServerName = "http://10.38.32.137:1026/v2/entities/AmbientMonitor_001/attrs";
@@ -225,18 +225,33 @@ void loop()
             clocks.tiempo_lectura = clocks.tiempo_actual;
         }
 
+        unsigned long now = millis();
+
         // Verificar si es tiempo de envío
-        if (flags.envio_programado && (long)(clocks.tiempo_actual - clocks.proximo_envio) >= INTERVALO_ENVIO)
+        if (!flags.envio_programado)
         {
+            clocks.proximo_envio = now + INTERVALO_ENVIO;
+            flags.envio_programado = true; 
             estado_actual = Estado::ENVIO;
             flags.envio = true;
             Serial.println("Pasando al estado de ENVIO...");
+        }
+        if (flags.envio_programado == true && (long)(now - clocks.proximo_envio) >= 0)
+        {
+            flags.envio = true;
+            flags.lectura = false;
+            Serial.println("Pasando al estado de ENVIO...");
+            estado_actual = Estado::ENVIO;
         }
     }
     break;
 
     case Estado::ENVIO:
     {
+      display.clearDisplay();
+      displayStateInfo("ENVIO");
+      display.display();
+
         if (flags.dev)
         {
             estado_actual = Estado::DESARROLLADOR;
@@ -244,9 +259,13 @@ void loop()
         }
 
         Serial.println("Estado: ENVIO");
+        display.clearDisplay();
+        displayStateInfo("ENVIO");
+        display.display();
 
         if (WiFi.status() == WL_CONNECTED)
         {
+            displayStateInfo("ENVIO");
             // Intentar envío
             HTTPClient http;
             http.begin(ServerName);
@@ -273,8 +292,18 @@ void loop()
         else
         {
             Serial.println("Sin conexión WiFi, posponiendo envío");
+            display.clearDisplay();
+            displayStateInfo("ENVIO");
+            display.display();
+            unsigned long now = millis();
+            clocks.proximo_envio = now + 20000;
+            flags.envio_programado = true;
+            flags.envio = false;
+            flags.lectura = true;
+            estado_actual = Estado::LECTURA;
+            break;
+
             // Programar siguiente intento en más tiempo
-            clocks.proximo_envio = clocks.tiempo_actual + INTERVALO_REINTENTO;
         }
 
         flags.envio_programado = true;
