@@ -81,6 +81,9 @@ Sistema de monitoreo ambiental basado en ESP32 que implementa una máquina de es
   #include <EEPROM.h>
   #include <WebServer.h>
   #include "ClosedCube_HDC1080.h"
+  // Access point V0.1
+  #include "ESPaccesspoint.h"
+  #include "Settings.h"
   ```
 
 ### Conexiones
