@@ -64,10 +64,12 @@ struct Clock
 // --- Variables globales ---
 Estado estado_actual = Estado::INICIO;
 volatile int screenMode = 0;
-const unsigned long INTERVALO_ENVIO = 15000;    // 15 segundos entre envíos
-const unsigned long INTERVALO_LECTURA = 2000;   // 2 segundos entre lecturas
-const unsigned long TIEMPO_INACTIVIDAD = 10000; // 10 segundos para apagar pantalla
-const unsigned long DEBOUNCE_TIME = 300;        // 300 ms para debounce
+const unsigned long INTERVALO_ENVIO = 15000;     // 15 segundos entre envíos
+const unsigned long INTERVALO_LECTURA = 2000;    // 2 segundos entre lecturas
+const unsigned long TIEMPO_INACTIVIDAD = 10000;  // 10 segundos para apagar pantalla
+const unsigned long DEBOUNCE_TIME = 300;         // 300 ms para debounce
+const unsigned long INTERVALO_REINTENTO = 60000; // 60 segundos para reintento
+const char *ServerName = "http://10.38.32.137:1026/v2/entities/AmbientMonitor_001/attrs";
 bool isDisplayOn = true;
 bool needsUpdate = false;
 
@@ -200,6 +202,7 @@ void loop()
             if (!isDisplayOn)
             {
                 isDisplayOn = true;
+                needsUpdate = true;
             }
             else
             {
@@ -208,7 +211,6 @@ void loop()
             }
             flags.boton_presionado = false;
             clocks.ultima_interaccion = clocks.tiempo_actual;
-            needsUpdate = true;
         }
 
         // Actualización periódica de sensores
@@ -242,13 +244,42 @@ void loop()
         }
 
         Serial.println("Estado: ENVIO");
-        // Aquí iría el código de envío
 
-        // Programar siguiente envío
-        clocks.proximo_envio = clocks.tiempo_actual + INTERVALO_ENVIO;
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            // Intentar envío
+            HTTPClient http;
+            http.begin(ServerName);
+            http.addHeader("Content-Type", "application/json");
+
+            String payload = construirJson(temp, hum, lux, dbValue);
+            int httpResponseCode = http.POST(payload);
+
+            if (httpResponseCode > 0)
+            {
+                Serial.printf("Envío exitoso, código: %d\n", httpResponseCode);
+                // Programar siguiente envío normal
+                clocks.proximo_envio = clocks.tiempo_actual + INTERVALO_ENVIO;
+            }
+            else
+            {
+                Serial.printf("Error en envío: %s\n", http.errorToString(httpResponseCode).c_str());
+            }
+
+            http.end();
+
+            clocks.proximo_envio = clocks.tiempo_actual + INTERVALO_ENVIO;
+        }
+        else
+        {
+            Serial.println("Sin conexión WiFi, posponiendo envío");
+            // Programar siguiente intento en más tiempo
+            clocks.proximo_envio = clocks.tiempo_actual + INTERVALO_REINTENTO;
+        }
+
         flags.envio_programado = true;
         flags.envio = false;
-
+        flags.lectura = true;
         estado_actual = Estado::LECTURA;
     }
     break;
