@@ -59,16 +59,17 @@ struct Clock
     unsigned long ultima_interaccion = 0;
     unsigned long ultimo_debounce = 0;
     unsigned long proximo_envio = 0;
+    volatile unsigned long lastButtonPressTime = 0;
 } clocks;
 
 // --- Variables globales ---
 Estado estado_actual = Estado::INICIO;
 volatile int screenMode = 0;
-const unsigned long INTERVALO_ENVIO = 15000;     // 15 segundos entre envíos
-const unsigned long INTERVALO_LECTURA = 2000;    // 2 segundos entre lecturas
-const unsigned long TIEMPO_INACTIVIDAD = 1000000;  // 10 segundos para apagar pantalla
-const unsigned long DEBOUNCE_TIME = 300;         // 300 ms para debounce
-const unsigned long INTERVALO_REINTENTO = 60000; // 60 segundos para reintento
+const unsigned long INTERVALO_ENVIO = 15000;      // 15 segundos entre envíos
+const unsigned long INTERVALO_LECTURA = 2000;     // 2 segundos entre lecturas
+const unsigned long TIEMPO_INACTIVIDAD = 1000000; // 10 segundos para apagar pantalla
+const unsigned long DEBOUNCE_TIME = 300;          // 300 ms para debounce
+const unsigned long INTERVALO_REINTENTO = 60000;  // 60 segundos para reintento
 const char *ServerName = "http://10.38.32.137:1026/v2/entities/AmbientMonitor_001/attrs";
 bool isDisplayOn = true;
 bool needsUpdate = false;
@@ -86,11 +87,27 @@ float temp = 0, hum = 0, lux = 0, dbValue = 0;
 void IRAM_ATTR handleButtonPress()
 {
     unsigned long now = millis();
-    if (now - clocks.ultimo_debounce > DEBOUNCE_TIME)
+    // Simple debounce: ignora las pulsaciones que ocurren muy cerca una de la otra.
+    if (now - clocks.lastButtonPressTime > DEBOUNCE_TIME)
     {
-        flags.boton_presionado = true;
-        clocks.ultimo_debounce = now;
-        clocks.ultima_interaccion = now;
+        clocks.lastButtonPressTime = now;
+        clocks.ultima_interaccion = now; // Reinicia el temporizador de inactividad con cada pulsación.
+
+        if (!isDisplayOn)
+        {
+            // Si la pantalla está apagada, la encendemos sin cambiar el modo.
+            isDisplayOn = true;
+        }
+        else
+        {
+            // Si la pantalla está encendida, cambiamos al siguiente modo.
+            screenMode++;
+            if (screenMode > 3)
+            {
+                screenMode = 0; // Vuelve al primer modo.
+            }
+        }
+        needsUpdate = true; // Establece la bandera para actualizar la pantalla de inmediato.
     }
 }
 
@@ -182,6 +199,7 @@ void loop()
 
     case Estado::LECTURA:
     {
+        unsigned long now = millis();
         if (flags.dev)
         {
             estado_actual = Estado::DESARROLLADOR;
@@ -197,20 +215,10 @@ void loop()
         }
 
         // Manejo del botón
-        if (flags.boton_presionado)
+        if (needsUpdate && isDisplayOn)
         {
-            if (!isDisplayOn)
-            {
-                isDisplayOn = true;
-                needsUpdate = true;
-            }
-            else
-            {
-                screenMode = (screenMode + 1) % 4;
-                needsUpdate = true;
-            }
-            flags.boton_presionado = false;
-            clocks.ultima_interaccion = clocks.tiempo_actual;
+            updateDisplay();
+            needsUpdate = false;
         }
 
         // Actualización periódica de sensores
@@ -222,16 +230,14 @@ void loop()
             {
                 updateDisplay();
             }
-            clocks.tiempo_lectura = clocks.tiempo_actual;
+            clocks.tiempo_lectura = now;
         }
-
-        unsigned long now = millis();
 
         // Verificar si es tiempo de envío
         if (!flags.envio_programado)
         {
             clocks.proximo_envio = now + INTERVALO_ENVIO;
-            flags.envio_programado = true; 
+            flags.envio_programado = true;
             estado_actual = Estado::ENVIO;
             flags.envio = true;
             Serial.println("Pasando al estado de ENVIO...");
@@ -248,9 +254,9 @@ void loop()
 
     case Estado::ENVIO:
     {
-      display.clearDisplay();
-      displayStateInfo("ENVIO");
-      display.display();
+        display.clearDisplay();
+        displayStateInfo("ENVIO");
+        display.display();
 
         if (flags.dev)
         {
