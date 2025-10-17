@@ -11,13 +11,12 @@
 #include "ClosedCube_HDC1080.h"
 #include "ESPaccesspoint.h"
 #include "Settings.h"
+#include "State.h"
+#include "StateMachine.h"
+
 
 // ===== INCLUIR LA LIBRERÍA DE MÁQUINA DE ESTADOS =====
-#include "EstadoDESARROLLADOR.cpp"
-#include "EstadoENVIO.cpp"
-#include "EstadoINICIO.cpp"
-#include "EstadoLECTURA.cpp"
-#include "StateMachine.h"
+#include "lib/Estados.cpp"
 
 // --- Definiciones de hardware ---
 #define SCREEN_WIDTH 128
@@ -123,78 +122,72 @@ void loop() {
 
 // Función para leer todos los sensores y guardar los valores en variables globales.
 void readSensors() {
-  temp = hdc1080.readTemperature() + TEMP_OFFSET;
-  hum = hdc1080.readHumidity() - HUM_OFFSET;
+  stateMachine.sensors.temp = hdc1080.readTemperature() + TEMP_OFFSET;
+  stateMachine.sensors.hum = hdc1080.readHumidity() - HUM_OFFSET;
 
   float currentLux = luxSensor.lightStrengthLux();
-
-  // --- Implementación del filtro de datos para el sensor de luz ---
-  // Si la nueva lectura es anómala (negativa o un salto demasiado grande)
   const float EXTREME_LUX_THRESHOLD = 300000.0;
+
   if (currentLux < 0 || currentLux > EXTREME_LUX_THRESHOLD) {
+    stateMachine.sensors.lux = luxHistory[(luxHistoryIndex - 1 + LUX_HISTORY_SIZE) % LUX_HISTORY_SIZE];
     Serial.print("Lectura de lux anómala (");
     Serial.print(currentLux);
-    Serial.println(") detectada y filtrada. Se usa el último valor válido.");
-    lux = luxHistory[(luxHistoryIndex - 1 + LUX_HISTORY_SIZE) % LUX_HISTORY_SIZE];
+    Serial.println(") detectada y filtrada.");
   } else {
-    // Si la lectura es válida, la añadimos al historial.
-    lux = currentLux;
-    luxHistory[luxHistoryIndex] = lux;
+    stateMachine.sensors.lux = currentLux;
+    luxHistory[luxHistoryIndex] = stateMachine.sensors.lux;
     luxHistoryIndex = (luxHistoryIndex + 1) % LUX_HISTORY_SIZE;
   }
 
   int rawADC = analogRead(SoundSensorPin);
   float voltageValue = rawADC * (VREF / 4095.0);
-  dbValue = voltageValue * 50.0;
+  stateMachine.sensors.dbValue = voltageValue * 50.0;
 
-  // Imprimir en el Serial Monitor para depuración.
   Serial.print("Temp: ");
-  Serial.print(temp, 1);
-  Serial.print(" C | ");
-  Serial.print("Hum: ");
-  Serial.print(hum, 1);
-  Serial.print(" % | ");
-  Serial.print("Lux: ");
-  Serial.print(lux, 1);
+  Serial.print(stateMachine.sensors.temp, 1);
+  Serial.print(" C | Hum: ");
+  Serial.print(stateMachine.sensors.hum, 1);
+  Serial.print(" % | Lux: ");
+  Serial.print(stateMachine.sensors.lux, 1);
   Serial.print(" | Ruido: ");
-  Serial.print(dbValue, 1);
+  Serial.print(stateMachine.sensors.dbValue, 1);
   Serial.println(" dBA");
 }
 
 // Función para dibujar los valores de todos los sensores a la vez.
 void drawAllSensors() {
   display.setTextSize(1);
-  display.setCursor(20, 23);  // Posición centrada
+  display.setCursor(20, 23);
   display.println("TODOS LOS SENSORES:");
 
   display.setCursor(0, 33);
   display.print("Temp:      ");
-  display.print(temp, 1);
+  display.print(stateMachine.sensors.temp, 1);
   display.println(" C");
 
   display.setCursor(0, 42);
   display.print("Hum:       ");
-  display.print(hum, 1);
+  display.print(stateMachine.sensors.hum, 1);
   display.println(" %");
 
   display.setCursor(0, 51);
   display.print("Lux:       ");
-  if (lux < 0) {
+  if (stateMachine.sensors.lux < 0) {
     display.println("Error");
   } else {
-    display.print(lux, 1);
+    display.print(stateMachine.sensors.lux, 1);
     display.println(" lux");
   }
 
   display.setCursor(0, 60);
   display.print("Ruido:     ");
-  display.print(dbValue, 1);
+  display.print(stateMachine.sensors.dbValue, 1);
   display.println(" dBA");
 }
 
 // Función para dibujar los valores actuales de los sensores en la pantalla.
 void updateDisplay() {
-  if (!isDisplayOn) {
+  if (!stateMachine.isDisplayOn) {
     return;  // No hace nada si la pantalla está apagada.
   }
 
@@ -204,7 +197,7 @@ void updateDisplay() {
 
   displayStateInfo("LECTURA");  // Va hasta Y=23
 
-  switch (screenMode) {
+  switch (stateMachine.screenMode) {
     case 0:  // Ahora el modo 0 es el de todos los sensores.
       drawAllSensors();
       break;
@@ -217,12 +210,12 @@ void updateDisplay() {
       // Valores en la zona azul.
       display.setTextSize(1);
       display.setCursor(0, 45);
-      display.print(temp, 1);
+      display.print(stateMachine.sensors.temp, 1);
       display.println(" C TEMP");
 
       display.setTextSize(1);
       display.setCursor(0, 55);
-      display.print(hum, 1);
+      display.print(stateMachine.sensors.hum, 1);
       display.println(" % HUM");
       break;
 
@@ -232,10 +225,10 @@ void updateDisplay() {
       display.setCursor(0, 25);
       display.println("LUZ:");
       display.setTextSize(1);  // Aumentado el tamaño de la fuente.
-      if (lux < 0) {
+      if (stateMachine.sensors.lux < 0) {
         display.println("Error");
       } else {
-        display.print(lux, 1);
+        display.print(stateMachine.sensors.lux, 1);
         display.println(" lux");
       }
       break;
@@ -249,7 +242,7 @@ void updateDisplay() {
       // Valor en la zona azul.
       display.setTextSize(1);    // Aumentado el tamaño de la fuente.
       display.setCursor(0, 45);  // Ajustada la posición del cursor.
-      display.print(dbValue, 1);
+      display.print(stateMachine.sensors.dbValue, 1);
       display.println(" dBA");
       break;
   }
@@ -261,30 +254,21 @@ void updateDisplay() {
 String construirJson(float temperatura, float humedad, float luz, float ruido) {
   StaticJsonDocument<512> doc;
 
-  // Temperatura
   JsonObject temp = doc.createNestedObject("temperature");
   temp["value"] = temperatura;
   temp["type"] = "number";
 
-  // Humedad
   JsonObject hum = doc.createNestedObject("humidity");
   hum["value"] = humedad;
   hum["type"] = "number";
 
-  // Luz
   JsonObject light = doc.createNestedObject("light");
   light["value"] = luz;
   light["type"] = "number";
 
-  // Ruido
   JsonObject noise = doc.createNestedObject("noise");
   noise["value"] = ruido;
   noise["type"] = "number";
-
-  // Timestamp
-  JsonObject timestamp = doc.createNestedObject("timestamp");
-  timestamp["value"] = millis();
-  timestamp["type"] = "number";
 
   String out;
   serializeJson(doc, out);
@@ -294,61 +278,47 @@ String construirJson(float temperatura, float humedad, float luz, float ruido) {
 void displayDeveloperInfo() {
   display.clearDisplay();
   display.setTextSize(1);
-
-  // Encabezado
   display.setCursor(0, 0);
   display.println("Modo Desarrollador");
   display.drawLine(0, 9, 128, 9, SSD1306_WHITE);
 
-  // WiFi Status (16 píxeles desde arriba)
   display.setCursor(0, 12);
   if (WiFi.status() == WL_CONNECTED) {
     display.print("WiFi: ");
-    display.println(settings.ssid.substring(0, 10));  // Limitar longitud
+    display.println(settings.ssid.substring(0, 10));
     display.setCursor(0, 21);
-    String ip = WiFi.localIP().toString();
-    display.println(ip.substring(0, 16));  // Limitar longitud
+    display.println(WiFi.localIP().toString());
   } else if (WiFi.getMode() == WIFI_AP) {
     display.println("AP: ESP-HOTSPOT");
     display.setCursor(0, 21);
     display.println(WiFi.softAPIP().toString());
   }
 
-  // Línea separadora
   display.drawLine(0, 30, 128, 30, SSD1306_WHITE);
-
-  // Datos de sensores (2 columnas)
   display.setCursor(0, 33);
   display.print("T:");
-  display.print(temp, 1);
-
+  display.print(stateMachine.sensors.temp, 1);
   display.setCursor(64, 33);
   display.print("H:");
-  display.println(hum, 1);
-
+  display.println(stateMachine.sensors.hum, 1);
   display.setCursor(0, 42);
   display.print("L:");
-  display.print(lux, 1);
-
+  display.print(stateMachine.sensors.lux, 1);
   display.setCursor(64, 42);
   display.print("R:");
-  display.println(dbValue, 1);
+  display.println(stateMachine.sensors.dbValue, 1);
 
   display.display();
 }
 
 // Agregar después de displayDeveloperInfo()
 void displayStateInfo(const char* estado) {
-  // Dibujar estado y WiFi en la parte superior
   display.setTextSize(1);
   display.setCursor(0, 0);
   display.print("Estado: ");
   display.println(estado);
-
-  // Dibujar línea separadora
   display.drawLine(0, 9, 128, 9, SSD1306_WHITE);
 
-  // Mostrar estado WiFi
   display.setCursor(0, 11);
   if (WiFi.status() == WL_CONNECTED) {
     String ssid = settings.ssid;
@@ -358,6 +328,5 @@ void displayStateInfo(const char* estado) {
     display.println("Sin conexion");
   }
 
-  // Línea separadora final
   display.drawLine(0, 20, 128, 20, SSD1306_WHITE);
 }
