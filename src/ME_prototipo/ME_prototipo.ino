@@ -14,7 +14,6 @@
 #include "State.h"
 #include "StateMachine.h"
 
-
 // ===== INCLUIR LA LIBRERÍA DE MÁQUINA DE ESTADOS =====
 #include "lib/Estados.cpp"
 
