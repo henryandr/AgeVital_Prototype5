@@ -4,6 +4,9 @@
 #include "State.h"
 #include "StateMachine.h"
 
+class EstadoLECTURA;
+class EstadoDESARROLLADOR;
+
 class EstadoINICIO : public State {
  private:
   bool firstRun = true;
@@ -28,8 +31,9 @@ class EstadoINICIO : public State {
 
     Serial.println("Estado: INICIO");
     statemachine->flags.inicio = false;
-    statemachine->flags.proximo_envio = now + statemachine->settings.INTERVALO_ENVIO;
     statemachine->flags.envio_programado = true;
+    statemachine->clocks.proximo_envio = now + statemachine->settings.INTERVALO_ENVIO;
+
     statemachine->ChangeState(new EstadoLECTURA());
     firstRun = false;  // Asegurar que no se vuelva a ejecutar
   }

@@ -76,6 +76,6 @@ class StateMachine {
   State* getCurrentState() const { return currentState; }
   State* getPreviousState() const { return previousState; }
   const char* getCurrentStateName();
-}
+};
 
 #endif

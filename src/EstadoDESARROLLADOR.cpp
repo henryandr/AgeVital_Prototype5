@@ -7,8 +7,11 @@
 #include "StateMachine.h"
 
 class EstadoINICIO;
+
+extern Adafruit_SSD1306 display;
+extern void displayStateInfo(const char* estado);
 extern void displayDeveloperInfo();
-extern void StartAPorSTA(Settings& settings);
+extern void startAPorSTA(Settings& settings);
 extern Webserver server;
 extern Settings settings;
 
@@ -33,7 +36,7 @@ class EstadoDESARROLLADOR : public State {
 
   void execute() override {
     if (primera_vez) {
-      StartAPorSTA(settings);
+      startAPorSTA(settings);
       primera_vez = false;
     }
     server.handleClient();  // Manejar las solicitudes del cliente

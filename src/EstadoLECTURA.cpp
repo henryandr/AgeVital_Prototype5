@@ -4,6 +4,15 @@
 #include "State.h"
 #include "StateMachine.h"
 
+// Declaraciones adelantadas
+class EstadoENVIO;
+class EstadoDESARROLLADOR;
+
+// Declaraciones de funciones externas
+extern void readSensors();
+extern void updateDisplay();
+extern Adafruit_SSD1306 display;
+
 class EstadoLECTURA : public State {
  public:
   void onEnter() override {

@@ -8,6 +8,14 @@
 #include "State.h"
 #include "StateMachine.h"
 
+// Declaraciones adelantadas
+class EstadoLECTURA;
+class EstadoDESARROLLADOR;
+// Declaraciones de funciones externas
+extern String construirJson(float temperatura, float humedad, float luz, float ruido);
+extern void displayStateInfo(const char* estado);
+extern Adafruit_SSD1306 display;
+
 class EstadoENVIO : public State {
   // Por ahora hasta implementar el AP con configuración de WiFi y servidor
  private:
@@ -15,7 +23,6 @@ class EstadoENVIO : public State {
 
  public:
   // Tiempo actual
-  unsigned long now = millis();
 
   void onEnter() override {
     Serial.println("=== ENTRANDO A ESTADO: ENVIO ===");
@@ -30,6 +37,8 @@ class EstadoENVIO : public State {
 
   // Verificar si se debe cambiar al estado DESARROLLADOR
   void execute() override {
+    unsigned long now = millis();
+
     if (statemachine->flags.dev) {
       Serial.println("Cambiando a Estado DESARROLLADOR desde ENVIO");
       statemachine->ChangeState(new EstadoDESARROLLADOR());
@@ -43,7 +52,7 @@ class EstadoENVIO : public State {
       statemachine->flags.envio_programado = true;
 
       // Volver a lectura
-      statemachine->changeState(new EstadoLECTURA());
+      statemachine->ChangeState(new EstadoLECTURA());
       return;
     }
 
@@ -53,7 +62,7 @@ class EstadoENVIO : public State {
     http.begin(ServerName);
     http.addHeader("Content-Type", "application/json");
 
-    String payload = construirJson(context->sensors.temp, context->sensors.hum, context->sensors.lux, context->sensors.dbValue);
+    String payload = construirJson(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
 
     int httpResponseCode = http.POST(payload);
 
@@ -64,6 +73,10 @@ class EstadoENVIO : public State {
     }
 
     http.end();
+
+    statemachine->clocks.proximo_envio = now + statemachine->settings.INTERVALO_ENVIO;
+    statemachine->flags.envio_programado = true;
+    statemachine->ChangeState(new EstadoLECTURA());
   }
 
   void onExit() override {
