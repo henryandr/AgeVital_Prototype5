@@ -1,11 +1,6 @@
-# 🌿 AgeVital Prototype 5
+# 🌿 AgeVital Prototype 5 (TARS 1)
 
 **Sistema de Monitoreo Ambiental IoT con Máquina de Estados**
-
-[![ESP32](https://img.shields.io/badge/ESP32-DevModule-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
-[![Arduino](https://img.shields.io/badge/Arduino-Compatible-green.svg)](https://www.arduino.cc/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Estado](https://img.shields.io/badge/Estado-En%20Desarrollo-orange.svg)]()
 
 ---
 
