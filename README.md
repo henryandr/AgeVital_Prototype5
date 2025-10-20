@@ -494,7 +494,7 @@ La máquina de estados gestiona el flujo del programa de forma modular y eficien
 
 ## 📊 Diagrama de Clases
 
-### UML de la Arquitectura
+### Esquema de la Arquitectura
 
 ```
 ┌──────────────────────────────────────────────────┐
