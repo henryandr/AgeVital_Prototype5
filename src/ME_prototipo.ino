@@ -31,6 +31,9 @@ const float NOISE_OFFSET = 50.0;
 const float TEMP_OFFSET = -3;
 const float HUM_OFFSET = 7.0;
 const float LUX_CALIBRATION_FACTOR = 0.613;
+// Constantes de calibración del sensor de Lux (basadas en mediciones reales realizadas)
+const float LUX_CALIBRATION_OFFSET = 6.1551;
+const float LUX_CALIBRATION_SLOPE = 1.3788;
 
 // --- Objetos ---
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
@@ -123,17 +126,18 @@ void loop() {
 void readSensors() {
   stateMachine.sensors.temp = hdc1080.readTemperature() + TEMP_OFFSET;
   stateMachine.sensors.hum = hdc1080.readHumidity() - HUM_OFFSET;
-
-  float currentLux = luxSensor.lightStrengthLux();
+  // Agregamos la lux leida sin corregir
+  float rawLux = luxSensor.lightStrengthLux();
   const float EXTREME_LUX_THRESHOLD = 300000.0;
 
-  if (currentLux < 0 || currentLux > EXTREME_LUX_THRESHOLD) {
+  if (rawLux < 0 || rawLux > EXTREME_LUX_THRESHOLD) {
     stateMachine.sensors.lux = luxHistory[(luxHistoryIndex - 1 + LUX_HISTORY_SIZE) % LUX_HISTORY_SIZE];
     Serial.print("Lectura de lux anómala (");
-    Serial.print(currentLux);
+    Serial.print(rawLux);
     Serial.println(") detectada y filtrada.");
   } else {
-    stateMachine.sensors.lux = currentLux;
+    float calibrateLux = (rawLux - LUX_CALIBRATION_OFFSET) / LUX_CALIBRATION_SLOPE;  // Aplicamos la calibración lineal que hemos determinado
+    stateMachine.sensors.lux = calibrateLux;
     luxHistory[luxHistoryIndex] = stateMachine.sensors.lux;
     luxHistoryIndex = (luxHistoryIndex + 1) % LUX_HISTORY_SIZE;
   }
