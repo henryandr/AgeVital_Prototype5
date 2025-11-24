@@ -26,8 +26,8 @@
 #define DEV_PIN 26
 
 // --- Factores de calibración ---
-const float NOISE_MULTIPLIER = 0.025;
-const float NOISE_OFFSET = 50.0;
+const float NOISE_CALIBRATION_SLOPE = 1.618;
+const float NOISE_CALIBRATION_OFFSET = 14.282;
 const float TEMP_OFFSET = -3;
 const float HUM_OFFSET = 7.0;
 const float LUX_CALIBRATION_FACTOR = 0.613;
@@ -144,7 +144,7 @@ void readSensors() {
 
   int rawADC = analogRead(SoundSensorPin);
   float voltageValue = rawADC * (VREF / 4095.0);
-  stateMachine.sensors.dbValue = voltageValue * 50.0;
+  stateMachine.sensors.dbValue = (voltageValue + NOISE_CALIBRATION_OFFSET) / NOISE_CALIBRATION_SLOPE;  // Ecuacion de calibracion de ruido
 
   Serial.print("Temp: ");
   Serial.print(stateMachine.sensors.temp, 1);
