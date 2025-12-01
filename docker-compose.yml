@@ -1,0 +1,103 @@
+# sudo sysctl -w vm.max_map_count=262144
+version: "3.8"
+
+services:
+  # Orion Context Broker
+  orion:
+    image: fiware/orion-ld
+    hostname: orion-ageserver
+    container_name: orion-ageserver
+    depends_on:
+      - mongo-db
+    networks:
+      - default
+    expose:
+      - "1026"
+    ports:
+      - "1026:1026"
+    command: -dbhost mongo-db -logLevel DEBUG
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail -s http://localhost:1026/version || exit 1"]
+      interval: 10m
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+  # Quantum Leap
+  quantumleap:
+    image: orchestracities/quantumleap
+    hostname: quantumleap-ageserver
+    container_name: quantumleap-ageserver
+    ports:
+      - "8668:8668"
+    depends_on:
+      - crate-db
+    environment:
+      - CRATE_HOST=crate-db
+      - LOGLEVEL=DEBUG
+
+  # MongoDB
+  mongo-db:
+    image: mongo:3.6
+    hostname: mongo-db-ageserver
+    container_name: db-mongo-ageserver
+    expose:
+      - "27017"
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-db:/data/db
+
+  # CrateDB
+  crate-db:
+    image: crate
+    hostname: crate-db-ageserver
+    container_name: db-crate-ageserver
+    ports:
+      - "4200:4200"
+      - "4300:4300"
+      - "5432:5432"
+    command: crate -Cauth.host_based.enabled=false -Ccluster.name=democluster -Chttp.cors.enabled=true -Chttp.cors.allow-origin="*"
+    environment:
+      - CRATE_HEAP_SIZE=4g
+    volumes:
+      - crate-db:/data
+
+  # Grafana
+  grafana:
+    image: grafana/grafana
+    container_name: grafana-ageserver
+    depends_on:
+      - crate-db
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana:/var/lib/grafana
+
+  # === Tu agente IoT personalizado ===
+  sensor-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile  # tu Dockerfile del agente
+    container_name: sensor-agent
+    depends_on:
+      - orion
+    environment:
+      - ORION_HOST=orion
+      - ORION_PORT=1026
+      - DATA_PATH=/app/agevital_data
+    volumes:
+      - ./agent_data:/app/agevital_data
+    ports:
+      - "5000:5000"
+    networks:
+      - default
+    restart: always
+
+networks:
+  default:
+
+volumes:
+  mongo-db: ~
+  crate-db: ~
+  grafana: ~
