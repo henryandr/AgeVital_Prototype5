@@ -31,13 +31,14 @@ struct SensorData {
   float hum = 0.0;
   float lux = 0.0;
   float dbValue = 0.0;
+  float voltage = 0.0;
 };
 
 // ===== NUEVA: Estructura de configuración =====
 struct Config {
   unsigned long INTERVALO_LECTURA = 2000;     // 2 segundos
   unsigned long INTERVALO_ENVIO = 15000;      // 15 segundos
-  unsigned long TIEMPO_INACTIVIDAD = 10000;   // 10 segundos
+  unsigned long TIEMPO_INACTIVIDAD = 1000000;   // 10 segundos
   unsigned long DEBOUNCE_TIME = 300;          // 300 ms
   unsigned long INTERVALO_REINTENTO = 20000;  // 20 segundos
 };

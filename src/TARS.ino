@@ -15,19 +15,19 @@
 #include "StateMachine.h"
 
 // ===== INCLUIR LA LIBRERÍA DE MÁQUINA DE ESTADOS =====
-#include "lib/Estados.cpp"
+#include "Estados.h"
 
 // --- Definiciones de hardware ---
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define SoundSensorPin 35
-#define VREF 3.3
+#define VREF 3.7
 #define BUTTON_PIN 27
 #define DEV_PIN 26
 
 // --- Factores de calibración ---
-const float NOISE_MULTIPLIER = 0.025;
-const float NOISE_OFFSET = 50.0;
+const float NOISE_CALIBRATION_SLOPE = 1.618;
+const float NOISE_CALIBRATION_OFFSET = 14.282;
 const float TEMP_OFFSET = -3;
 const float HUM_OFFSET = 7.0;
 const float LUX_CALIBRATION_FACTOR = 0.613;
@@ -143,8 +143,10 @@ void readSensors() {
   }
 
   int rawADC = analogRead(SoundSensorPin);
-  float voltageValue = rawADC * (VREF / 4095.0);
-  stateMachine.sensors.dbValue = voltageValue * 50.0;
+  float voltageValue = rawADC * (VREF / 4096.0);
+  stateMachine.sensors.voltage = voltageValue;
+  float dBRaw = voltageValue * 50.0;
+  stateMachine.sensors.dbValue =dBRaw;
 
   Serial.print("Temp: ");
   Serial.print(stateMachine.sensors.temp, 1);
@@ -159,21 +161,21 @@ void readSensors() {
 
 // Función para dibujar los valores de todos los sensores a la vez.
 void drawAllSensors() {
-  display.setTextSize(1);
-  display.setCursor(20, 23);
-  display.println("TODOS LOS SENSORES:");
+  display.setTextSize(0);
+  display.setCursor(15, 17);
+  display.println("Sensores:");
 
-  display.setCursor(0, 33);
+  display.setCursor(0, 23);
   display.print("Temp:      ");
   display.print(stateMachine.sensors.temp, 1);
   display.println(" C");
 
-  display.setCursor(0, 42);
+  display.setCursor(0, 32);
   display.print("Hum:       ");
   display.print(stateMachine.sensors.hum, 1);
   display.println(" %");
 
-  display.setCursor(0, 51);
+  display.setCursor(0, 41);
   display.print("Lux:       ");
   if (stateMachine.sensors.lux < 0) {
     display.println("Error");
@@ -182,7 +184,7 @@ void drawAllSensors() {
     display.println(" lux");
   }
 
-  display.setCursor(0, 60);
+  display.setCursor(0, 51);
   display.print("Ruido:     ");
   display.print(stateMachine.sensors.dbValue, 1);
   display.println(" dBA");
@@ -206,28 +208,28 @@ void updateDisplay() {
       break;
     case 1:  // El modo 1 es ahora para temperatura y humedad.
       // Título en la zona amarilla, centrado.
-      display.setTextSize(2);
-      display.setCursor(0, 25);
+      display.setTextSize(1);
+      display.setCursor(0, 20);
       display.println("TEMP/HUM:");
 
       // Valores en la zona azul.
-      display.setTextSize(1);
-      display.setCursor(0, 45);
+      display.setTextSize(1.5);
+      display.setCursor(0, 35);
       display.print(stateMachine.sensors.temp, 1);
       display.println(" C TEMP");
 
-      display.setTextSize(1);
-      display.setCursor(0, 55);
+      display.setTextSize(1.5);
+      display.setCursor(0, 45);
       display.print(stateMachine.sensors.hum, 1);
       display.println(" % HUM");
       break;
 
     case 2:  // El modo 2 es para luz.
       // Título en la zona amarilla, centrado.
-      display.setTextSize(2);
-      display.setCursor(0, 25);
+      display.setTextSize(1);
+      display.setCursor(0, 17);
       display.println("LUZ:");
-      display.setTextSize(1);  // Aumentado el tamaño de la fuente.
+      display.setTextSize(2);  // Aumentado el tamaño de la fuente.
       if (stateMachine.sensors.lux < 0) {
         display.println("Error");
       } else {
@@ -238,15 +240,21 @@ void updateDisplay() {
 
     case 3:  // El modo 3 es para ruido.
       // Título en la zona amarilla, centrado.
-      display.setTextSize(2);
-      display.setCursor(0, 25);
+      display.setTextSize(1);
+      display.setCursor(0, 17);
       display.println("RUIDO:");
 
       // Valor en la zona azul.
-      display.setTextSize(1);    // Aumentado el tamaño de la fuente.
-      display.setCursor(0, 45);  // Ajustada la posición del cursor.
+      display.setTextSize(2);    // Aumentado el tamaño de la fuente.
+      display.setCursor(0, 27);  // Ajustada la posición del cursor.
       display.print(stateMachine.sensors.dbValue, 1);
       display.println(" dBA");
+      display.setTextSize(1);
+      display.setCursor(0, 50);
+      display.print("V: ");
+      display.print(stateMachine.sensors.voltage, 3);
+      display.println(" V");
+
       break;
   }
 
@@ -321,15 +329,15 @@ void displayStateInfo(const char* estado) {
   display.print("Estado: ");
   display.println(estado);
   display.drawLine(0, 9, 128, 9, SSD1306_WHITE);
-
-  display.setCursor(0, 11);
+  // Dibujo de la conexion, para la pantalla, por ahora desactivado 
+  /*display.setCursor(0, 5);
   if (WiFi.status() == WL_CONNECTED) {
     String ssid = settings.ssid;
     if (ssid.length() > 10) ssid = ssid.substring(0, 10) + "...";
     display.println(ssid);
   } else {
     display.println("Sin conexion");
-  }
+  }*/
 
-  display.drawLine(0, 20, 128, 20, SSD1306_WHITE);
+  //display.drawLine(0, 20, 128, 20, SSD1306_WHITE);
 }
