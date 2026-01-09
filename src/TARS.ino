@@ -28,8 +28,6 @@
 // --- Factores de calibración ---
 const float NOISE_CALIBRATION_SLOPE = 1.618;
 const float NOISE_CALIBRATION_OFFSET = 14.282;
-const float NOISE_CALIBRATION_SLOPE = 1.618;
-const float NOISE_CALIBRATION_OFFSET = 14.282;
 const float TEMP_OFFSET = -3;
 const float HUM_OFFSET = 7.0;
 const float LUX_CALIBRATION_FACTOR = 0.613;
@@ -148,7 +146,7 @@ void readSensors() {
   float voltageValue = rawADC * (VREF / 4096.0);
   stateMachine.sensors.voltage = voltageValue;
   float dBRaw = voltageValue * 50.0;
-  stateMachine.sensors.dbValue = dBRaw;
+  stateMachine.sensors.dbValue =dBRaw;
 
   Serial.print("Temp: ");
   Serial.print(stateMachine.sensors.temp, 1);
@@ -331,7 +329,7 @@ void displayStateInfo(const char* estado) {
   display.print("Estado: ");
   display.println(estado);
   display.drawLine(0, 9, 128, 9, SSD1306_WHITE);
-  // Dibujo de la conexion, para la pantalla, por ahora desactivado
+  // Dibujo de la conexion, para la pantalla, por ahora desactivado 
   /*display.setCursor(0, 5);
   if (WiFi.status() == WL_CONNECTED) {
     String ssid = settings.ssid;
@@ -341,5 +339,5 @@ void displayStateInfo(const char* estado) {
     display.println("Sin conexion");
   }*/
 
-  // display.drawLine(0, 20, 128, 20, SSD1306_WHITE);
+  //display.drawLine(0, 20, 128, 20, SSD1306_WHITE);
 }
