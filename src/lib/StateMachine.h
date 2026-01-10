@@ -68,11 +68,6 @@ class StateMachine {
   void update();
   void ChangeState(State* newState);
 
-  void setSettings(unsigned long lectura, unsigned long envio) {
-    settings.INTERVALO_LECTURA = lectura;
-    settings.INTERVALO_ENVIO = envio;
-  }
-
   // Getters de los estados actual y previo
   State* getCurrentState() const { return currentState; }
   State* getPreviousState() const { return previousState; }

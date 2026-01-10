@@ -1,4 +1,7 @@
 #include "Estados.h"
+#include "DevWebOTA.h"
+
+DevWebOTA* devWeb = nullptr;
 
 // ========================================
 // IMPLEMENTACIÓN ESTADO INICIO
@@ -176,22 +179,30 @@ void EstadoDESARROLLADOR::onEnter() {
 }
 
 void EstadoDESARROLLADOR::execute() {
-  if (primera_vez) {
-    startAPorSTA(settings);
+  if (primera_vez){
+    if (! devWeb){
+      devWeb = new DevWebOTA(&server);
+    }
+    devWeb->begin();
     primera_vez = false;
   }
-  server.handleClient();
-  displayDeveloperInfo();
 
-  if (digitalRead(DEV_PIN) == HIGH) {
-    Serial.println("Saliendo del modo DESARROLLADOR, volviendo a INICIO");
-    statemachine->flags.dev = false;
-    primera_vez = true;
+  devWeb->handle();
 
-    statemachine->ChangeState(new EstadoINICIO());
-    return;
+  if (Serial.available()) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    if (cmd == "exit") {
+      Serial.println("Saliendo del modo desarrollador...");
+      statemachine->flags.dev = false;
+      if (devWeb) {
+        delete devWeb;
+        devWeb = nullptr;
+      }
+      statemachine->ChangeState(new EstadoINICIO());
+      return;
+    }
   }
-  delay(100);
 }
 
 void EstadoDESARROLLADOR::onExit() {

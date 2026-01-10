@@ -9,8 +9,6 @@
 #include <Wire.h>
 
 #include "ClosedCube_HDC1080.h"
-#include "ESPaccesspoint.h"
-#include "Settings.h"
 #include "State.h"
 #include "StateMachine.h"
 
@@ -40,7 +38,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 ClosedCube_HDC1080 hdc1080;
 DFRobot_B_LUX_V30B luxSensor(&Wire, 5);
 WebServer server(80);
-Settings settings;
 
 // ===== MÁQUINA DE ESTADOS =====
 StateMachine stateMachine;
@@ -76,10 +73,6 @@ void setup() {
   Serial.begin(115200);
   Serial.println("\n=== TARS1 ===");
   Serial.println("Con Máquina de Estados Modular\n");
-
-  EEPROM.begin(4096);
-  settings.load();
-  settings.info();
   Wire.begin(21, 22);
 
   // Inicialización de sensores
@@ -105,16 +98,22 @@ void setup() {
     luxHistory[i] = initialLux;
   }
 
-  // Configuracion de intervalos de la máquina de estados para pruebas rapidas
-  // stateMachine.setSettings(2000, 15000);  // 2 seg lectura, 15 seg envío
+  stateMachine.flags.dev = true;
 
   // Iniciamos la maquina de estados
-  if (digitalRead(DEV_PIN) == LOW) {
-    stateMachine.flags.dev = true;
+  if (stateMachine.flags.dev) {
     stateMachine.begin(new EstadoDESARROLLADOR());
   } else {
-    stateMachine.begin(new EstadoINICIO());
+    stateMachine. begin(new EstadoINICIO());
   }
+
+  // Iniciamos la maquina de estados
+  //if (digitalRead(DEV_PIN) == LOW) {
+    //stateMachine.flags.dev = true;
+    //stateMachine.begin(new EstadoDESARROLLADOR());
+  //} else {
+    //stateMachine.begin(new EstadoINICIO());
+  //}
 }
 
 void loop() {
@@ -296,7 +295,6 @@ void displayDeveloperInfo() {
   display.setCursor(0, 12);
   if (WiFi.status() == WL_CONNECTED) {
     display.print("WiFi: ");
-    display.println(settings.ssid.substring(0, 10));
     display.setCursor(0, 21);
     display.println(WiFi.localIP().toString());
   } else if (WiFi.getMode() == WIFI_AP) {

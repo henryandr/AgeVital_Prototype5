@@ -6,8 +6,7 @@
 #include <WiFi.h>
 #include <Adafruit_SSD1306.h>
 
-#include "ESPaccesspoint.h"
-#include "Settings.h"
+
 #include "State.h"
 #include "StateMachine.h"
 
@@ -16,10 +15,8 @@ extern void readSensors();
 extern void updateDisplay();
 extern void displayStateInfo(const char* estado);
 extern void displayDeveloperInfo();
-extern void startAPorSTA(Settings& settings);
 extern Adafruit_SSD1306 display;
 extern WebServer server;
-extern Settings settings;
 extern String construirJson(float temperatura, float humedad, float luz, float ruido);
 
 #define DEV_PIN 26
