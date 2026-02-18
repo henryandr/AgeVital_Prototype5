@@ -8,12 +8,11 @@
 #include <WiFi.h>
 #include <Wire.h>
 
+#include "AppConfig.h"
 #include "ClosedCube_HDC1080.h"
+#include "Estados.h"
 #include "State.h"
 #include "StateMachine.h"
-
-// ===== INCLUIR LA LIBRERÍA DE MÁQUINA DE ESTADOS =====
-#include "Estados.h"
 
 // --- Definiciones de hardware ---
 #define SCREEN_WIDTH 128
@@ -38,6 +37,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 ClosedCube_HDC1080 hdc1080;
 DFRobot_B_LUX_V30B luxSensor(&Wire, 5);
 WebServer server(80);
+AppConfig appConfig;
 
 // ===== MÁQUINA DE ESTADOS =====
 StateMachine stateMachine;
@@ -98,21 +98,23 @@ void setup() {
     luxHistory[i] = initialLux;
   }
 
+  appConfig.begin();  // Carga configuracion desde NVS, antes de iniciar porque si no se llena de informacion basura
+
   stateMachine.flags.dev = true;
 
   // Iniciamos la maquina de estados
   if (stateMachine.flags.dev) {
     stateMachine.begin(new EstadoDESARROLLADOR());
   } else {
-    stateMachine. begin(new EstadoINICIO());
+    stateMachine.begin(new EstadoINICIO());
   }
 
   // Iniciamos la maquina de estados
-  //if (digitalRead(DEV_PIN) == LOW) {
-    //stateMachine.flags.dev = true;
-    //stateMachine.begin(new EstadoDESARROLLADOR());
+  // if (digitalRead(DEV_PIN) == LOW) {
+  // stateMachine.flags.dev = true;
+  // stateMachine.begin(new EstadoDESARROLLADOR());
   //} else {
-    //stateMachine.begin(new EstadoINICIO());
+  // stateMachine.begin(new EstadoINICIO());
   //}
 }
 
@@ -145,7 +147,7 @@ void readSensors() {
   float voltageValue = rawADC * (VREF / 4096.0);
   stateMachine.sensors.voltage = voltageValue;
   float dBRaw = voltageValue * 50.0;
-  stateMachine.sensors.dbValue =dBRaw;
+  stateMachine.sensors.dbValue = dBRaw;
 
   Serial.print("Temp: ");
   Serial.print(stateMachine.sensors.temp, 1);
@@ -327,7 +329,7 @@ void displayStateInfo(const char* estado) {
   display.print("Estado: ");
   display.println(estado);
   display.drawLine(0, 9, 128, 9, SSD1306_WHITE);
-  // Dibujo de la conexion, para la pantalla, por ahora desactivado 
+  // Dibujo de la conexion, para la pantalla, por ahora desactivado
   /*display.setCursor(0, 5);
   if (WiFi.status() == WL_CONNECTED) {
     String ssid = settings.ssid;
@@ -337,5 +339,5 @@ void displayStateInfo(const char* estado) {
     display.println("Sin conexion");
   }*/
 
-  //display.drawLine(0, 20, 128, 20, SSD1306_WHITE);
+  // display.drawLine(0, 20, 128, 20, SSD1306_WHITE);
 }

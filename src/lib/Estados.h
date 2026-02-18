@@ -1,12 +1,12 @@
 #ifndef ESTADOS_H
 #define ESTADOS_H
 
+#include <Adafruit_SSD1306.h>
 #include <HTTPClient.h>
 #include <WebServer.h>
 #include <WiFi.h>
-#include <Adafruit_SSD1306.h>
 
-
+#include "AppConfig.h"
 #include "State.h"
 #include "StateMachine.h"
 
@@ -50,9 +50,6 @@ class EstadoLECTURA : public State {
 // ESTADO ENVIO
 // ========================================
 class EstadoENVIO : public State {
- private:
-  const char* ServerName = "http://10.38.32.137:1026/v2/entities/AmbientMonitor_001/attrs";
-
  public:
   void onEnter() override;
   void execute() override;

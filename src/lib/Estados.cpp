@@ -1,4 +1,6 @@
 #include "Estados.h"
+
+#include "AppConfig.h"
 #include "DevWebOTA.h"
 
 DevWebOTA* devWeb = nullptr;
@@ -25,7 +27,7 @@ void EstadoINICIO::execute() {
   unsigned long now = millis();
   Serial.println("Estado: INICIO");
   statemachine->flags.inicio = false;
-  statemachine->clocks.proximo_envio = now + statemachine->settings.INTERVALO_ENVIO;
+  statemachine->clocks.proximo_envio = now + appConfig.intervaloEnvio;
   statemachine->flags.envio_programado = true;
 
   statemachine->ChangeState(new EstadoLECTURA());
@@ -38,9 +40,7 @@ void EstadoINICIO::onExit() {
   firstRun = false;
 }
 
-const char* EstadoINICIO::getName() {
-  return "INICIO";
-}
+const char* EstadoINICIO::getName() { return "INICIO"; }
 
 // ========================================
 // IMPLEMENTACIÓN ESTADO LECTURA
@@ -74,7 +74,7 @@ void EstadoLECTURA::execute() {
     statemachine->needsUpdate = false;
   }
 
-  if (now - statemachine->clocks.tiempo_lectura >= statemachine->settings.INTERVALO_LECTURA) {
+  if (now - statemachine->clocks.tiempo_lectura >= appConfig.intervaloLectura) {
     Serial.println("Estado: LECTURA");
     readSensors();
     if (statemachine->isDisplayOn) {
@@ -93,9 +93,7 @@ void EstadoLECTURA::onExit() {
   statemachine->flags.lectura = false;
 }
 
-const char* EstadoLECTURA::getName() {
-  return "LECTURA";
-}
+const char* EstadoLECTURA::getName() { return "LECTURA"; }
 
 // ========================================
 // IMPLEMENTACIÓN ESTADO ENVIO
@@ -123,7 +121,7 @@ void EstadoENVIO::execute() {
 
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Sin conexión WiFi, posponiendo envío");
-    statemachine->clocks.proximo_envio = now + statemachine->settings.INTERVALO_REINTENTO;
+    statemachine->clocks.proximo_envio = now + appConfig.intervaloReintento;
     statemachine->flags.envio_programado = true;
 
     statemachine->ChangeState(new EstadoLECTURA());
@@ -132,7 +130,7 @@ void EstadoENVIO::execute() {
 
   Serial.println("Estado: ENVIO");
   HTTPClient http;
-  http.begin(ServerName);
+  http.begin(appConfig.serverUrl);
   http.addHeader("Content-Type", "application/json");
 
   String payload = construirJson(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
@@ -147,7 +145,7 @@ void EstadoENVIO::execute() {
 
   http.end();
 
-  statemachine->clocks.proximo_envio = now + statemachine->settings.INTERVALO_ENVIO;
+  statemachine->clocks.proximo_envio = now + appConfig.intervaloEnvio;
   statemachine->flags.envio_programado = true;
 
   statemachine->ChangeState(new EstadoLECTURA());
@@ -158,9 +156,7 @@ void EstadoENVIO::onExit() {
   statemachine->flags.envio = false;
 }
 
-const char* EstadoENVIO::getName() {
-  return "ENVIO";
-}
+const char* EstadoENVIO::getName() { return "ENVIO"; }
 
 // ========================================
 // IMPLEMENTACIÓN ESTADO DESARROLLADOR
@@ -179,8 +175,8 @@ void EstadoDESARROLLADOR::onEnter() {
 }
 
 void EstadoDESARROLLADOR::execute() {
-  if (primera_vez){
-    if (! devWeb){
+  if (primera_vez) {
+    if (!devWeb) {
       devWeb = new DevWebOTA(&server);
     }
     devWeb->begin();
@@ -211,6 +207,4 @@ void EstadoDESARROLLADOR::onExit() {
   primera_vez = true;
 }
 
-const char* EstadoDESARROLLADOR::getName() {
-  return "DESARROLLADOR";
-}
+const char* EstadoDESARROLLADOR::getName() { return "DESARROLLADOR"; }

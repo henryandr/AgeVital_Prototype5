@@ -36,11 +36,8 @@ struct SensorData {
 
 // ===== NUEVA: Estructura de configuración =====
 struct Config {
-  unsigned long INTERVALO_LECTURA = 2000;     // 2 segundos
-  unsigned long INTERVALO_ENVIO = 15000;      // 15 segundos
-  unsigned long TIEMPO_INACTIVIDAD = 1000000;   // 10 segundos
-  unsigned long DEBOUNCE_TIME = 300;          // 300 ms
-  unsigned long INTERVALO_REINTENTO = 20000;  // 20 segundos
+  unsigned long TIEMPO_INACTIVIDAD = 1000000;  // 10 segundos
+  unsigned long DEBOUNCE_TIME = 300;           // 300 ms
 };
 
 class StateMachine {
