@@ -24,9 +24,9 @@ class AppConfig {
     prefs.end();
 
     Serial.println("[AppConfig] Configuracion cargada:");
-    Serial.printf("serverUrl:          %s\n", serverUrl.c_str());
-    Serial.printf("intervaloEnvio:     %lu ms\n", intervaloEnvio);
-    Serial.printf("intervaloLectura:   %lu ms\n", intervaloLectura);
+    Serial.printf("serverUrl: %s\n", serverUrl.c_str());
+    Serial.printf("intervaloEnvio: %lu ms\n", intervaloEnvio);
+    Serial.printf("intervaloLectura: %lu ms\n", intervaloLectura);
     Serial.printf("intervaloReintento: %lu ms\n", intervaloReintento);
   }
 

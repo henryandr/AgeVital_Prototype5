@@ -17,7 +17,7 @@ extern void displayStateInfo(const char* estado);
 extern void displayDeveloperInfo();
 extern Adafruit_SSD1306 display;
 extern WebServer server;
-extern String construirJson(float temperatura, float humedad, float luz, float ruido);
+extern String construirPayload(float temperatura, float humedad, float luz, float ruido);
 
 #define DEV_PIN 26
 

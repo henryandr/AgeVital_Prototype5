@@ -131,9 +131,9 @@ void EstadoENVIO::execute() {
   Serial.println("Estado: ENVIO");
   HTTPClient http;
   http.begin(appConfig.serverUrl);
-  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
-  String payload = construirJson(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
+  String payload = construirPayload(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
 
   int httpResponseCode = http.POST(payload);
 
