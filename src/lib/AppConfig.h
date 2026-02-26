@@ -10,7 +10,7 @@ class AppConfig {
 
  public:
   // ===== VARIABLES CONFIGURABLES & DEFAULT =====
-  String serverUrl = "http://localhost:3001/oauth2/token";
+  String serverUrl = "http://10.38.35.216:1026/v2/entities/tarsdev/attrs";
   unsigned long intervaloEnvio = 15000;
   unsigned long intervaloLectura = 2000;
   unsigned long intervaloReintento = 20000;
@@ -44,7 +44,7 @@ class AppConfig {
     prefs.begin("appconfig", false);
     prefs.clear();
     prefs.end();
-    serverUrl = "http://localhost:3001/oauth2/token";
+    serverUrl = "http://10.38.35.216:1026/v2/entities/tarsdev/attrs";
     intervaloEnvio = 15000;
     intervaloLectura = 2000;
     intervaloReintento = 20000;

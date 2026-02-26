@@ -99,8 +99,8 @@ void DevWebOTA::begin() {
   Serial.println("\n=== MODO DESARROLLADOR ACTIVADO ===\n");
 
   prefs.begin("agevital", false);
-  String ssid = prefs.getString("ssid", "");
-  String pass = prefs.getString("pass", "");
+  String ssid = prefs.getString("ssid", defaultSSID);
+  String pass = prefs.getString("pass", defaultPass);
 
   if (ssid.length() > 0) {
     Serial.printf("Intentando conectar a: %s\n", ssid.c_str());
@@ -209,7 +209,7 @@ void DevWebOTA::begin() {
                  "</div></body></html>");
   });
 
-  // Ruta OTA — sin cambios tal cual
+  // Ruta OTA — sin cambios tal cual, esta parte no se toca y es la que maneja la actualizacion de firmware
   server->on(
       "/ota", HTTP_POST,
       [this]() {

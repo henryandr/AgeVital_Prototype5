@@ -131,11 +131,13 @@ void EstadoENVIO::execute() {
   Serial.println("Estado: ENVIO");
   HTTPClient http;
   http.begin(appConfig.serverUrl);
-  http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+  http.addHeader("Content-Type", "application/json");
 
   String payload = construirPayload(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
+  Serial.println("[ENVIO] Payload JSON:");
+  Serial.println(payload);
 
-  int httpResponseCode = http.POST(payload);
+  int httpResponseCode = http.PATCH(payload);
 
   if (httpResponseCode >= 200 && httpResponseCode < 300) {
     Serial.printf("✓ Envío exitoso, código: %d\n", httpResponseCode);

@@ -1,5 +1,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <ArduinoJson.h>
 #include <DFRobot_B_LUX_V30B.h>
 #include <EEPROM.h>
 #include <HTTPClient.h>
@@ -263,11 +264,26 @@ void updateDisplay() {
 
 // Función para construir el JSON con los datos de los sensores
 String construirPayload(float temperatura, float humedad, float luz, float ruido) {
-  String payload = "";
-  payload += "temperature=" + String(temperatura, 1);
-  payload += "&humidity=" + String(humedad, 1);
-  payload += "&light=" + String(luz, 1);
-  payload += "&noise=" + String(ruido, 1);
+  JsonDocument doc;
+
+  JsonObject humidity = doc["humidity"].to<JsonObject>();
+  humidity["type"] = "Number";
+  humidity["value"] = serialized(String(humedad, 1));
+
+  JsonObject temperature = doc["temperature"].to<JsonObject>();
+  temperature["type"] = "Number";
+  temperature["value"] = serialized(String(temperatura, 1));
+
+  JsonObject noise = doc["noise"].to<JsonObject>();
+  noise["type"] = "Number";
+  noise["value"] = serialized(String(ruido, 1));
+
+  JsonObject illuminance = doc["illuminance"].to<JsonObject>();
+  illuminance["type"] = "Number";
+  illuminance["value"] = serialized(String(luz, 1));
+
+  String payload;
+  serializeJson(doc, payload);
   return payload;
 }
 
