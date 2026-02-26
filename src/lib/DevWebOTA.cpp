@@ -199,6 +199,10 @@ void DevWebOTA::begin() {
   // Reset a defaults
   server->on("/config/reset", HTTP_POST, [this]() {
     appConfig.reset();
+    Serial.printf("[Config] serverUrl:          %s\n", appConfig.serverUrl.c_str());
+    Serial.printf("[Config] intervaloEnvio:     %lu\n", appConfig.intervaloEnvio);
+    Serial.printf("[Config] intervaloLectura:   %lu\n", appConfig.intervaloLectura);
+    Serial.printf("[Config] intervaloReintento: %lu\n", appConfig.intervaloReintento);
     server->send(200, "text/html",
                  "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
                  "<meta http-equiv='refresh' content='2;url=/'></head>"
