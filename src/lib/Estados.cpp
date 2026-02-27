@@ -2,6 +2,7 @@
 
 #include "AppConfig.h"
 #include "DevWebOTA.h"
+#include "WiFiManager.h"
 
 DevWebOTA* devWeb = nullptr;
 
@@ -26,6 +27,14 @@ void EstadoINICIO::execute() {
 
   unsigned long now = millis();
   Serial.println("Estado: INICIO");
+
+  // Si esta en la zona donde se puede conectar a WiFi, intenta conectarse
+  if (wifiManager.connect(30)) {
+    Serial.println("[INICIO] WiFi listo para envío de datos");
+  } else {
+    Serial.println("[INICIO] Sin WiFi, autoReconnect activo");
+  }
+
   statemachine->flags.inicio = false;
   statemachine->clocks.proximo_envio = now + appConfig.intervaloEnvio;
   statemachine->flags.envio_programado = true;
@@ -119,7 +128,7 @@ void EstadoENVIO::execute() {
     return;
   }
 
-  if (WiFi.status() != WL_CONNECTED) {
+  if (!wifiManager.isConnected()) {
     Serial.println("Sin conexión WiFi, posponiendo envío");
     statemachine->clocks.proximo_envio = now + appConfig.intervaloReintento;
     statemachine->flags.envio_programado = true;

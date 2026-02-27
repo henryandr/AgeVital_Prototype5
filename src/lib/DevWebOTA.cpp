@@ -1,6 +1,7 @@
 #include "DevWebOTA.h"
 
 #include "AppConfig.h"
+#include "WiFiManager.h"
 
 const char HTML_PAGE[] PROGMEM = R"=====(
 <!DOCTYPE html>
@@ -98,44 +99,11 @@ void DevWebOTA::begin() {
   if (initialized) return;
   Serial.println("\n=== MODO DESARROLLADOR ACTIVADO ===\n");
 
-  prefs.begin("agevital", false);
-  String ssid = prefs.getString("ssid", defaultSSID);
-  String pass = prefs.getString("pass", defaultPass);
-
-  if (ssid.length() > 0) {
-    Serial.printf("Intentando conectar a: %s\n", ssid.c_str());
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid.c_str(), pass.c_str());
-
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-      delay(500);
-      Serial.print(".");
-      attempts++;
-    }
-
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.printf("\nWiFi conectado!\n");
-      Serial.printf("  IP: %s\n\n", WiFi.localIP().toString().c_str());
-    } else {
-      Serial.println("\nNo se pudo conectar al WiFi");
-      ssid = "";
-    }
-  }
-
-  if (ssid.length() == 0 || WiFi.status() != WL_CONNECTED) {
-    Serial.println("Creando Access Point...");
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP(apSSID, apPass);
-    Serial.printf("Access Point creado\n");
-    Serial.printf("SSID: %s\n", apSSID);
-    Serial.printf("Password: %s\n", apPass);
-    Serial.printf("IP: %s\n\n", WiFi.softAPIP().toString().c_str());
+  if (!wifiManager.connect()) {
+    wifiManager.createAP();
   }
 
   // ===== RUTAS =====
-
-  // ===== Ruta WiFi =====
 
   server->on("/", HTTP_GET, [this]() {
     Serial.println("RESPUESTA GET / EXITOSA");
@@ -147,8 +115,7 @@ void DevWebOTA::begin() {
     String newpass = server->arg("pass");
 
     if (newssid.length() > 0) {
-      prefs.putString("ssid", newssid);
-      prefs.putString("pass", newpass);
+      wifiManager.saveCredentials(newssid, newpass);
       Serial.printf("WiFi guardado: %s\n", newssid.c_str());
 
       server->send(200, "text/html",
@@ -165,8 +132,6 @@ void DevWebOTA::begin() {
     }
   });
 
-  // ===== Ruta Config =====
-  // Guardar configuración del sistema
   server->on("/config", HTTP_POST, [this]() {
     String newUrl = server->arg("serverUrl");
     String newEnvio = server->arg("intervaloEnvio");
@@ -195,8 +160,6 @@ void DevWebOTA::begin() {
                  "</div></body></html>");
   });
 
-  // ===== Ruta Config Reset =====
-  // Reset a defaults
   server->on("/config/reset", HTTP_POST, [this]() {
     appConfig.reset();
     Serial.printf("[Config] serverUrl:          %s\n", appConfig.serverUrl.c_str());
@@ -213,7 +176,6 @@ void DevWebOTA::begin() {
                  "</div></body></html>");
   });
 
-  // Ruta OTA — sin cambios tal cual, esta parte no se toca y es la que maneja la actualizacion de firmware
   server->on(
       "/ota", HTTP_POST,
       [this]() {
@@ -251,5 +213,3 @@ void DevWebOTA::begin() {
 }
 
 void DevWebOTA::handle() { server->handleClient(); }
-
-bool DevWebOTA::isConfigured() { return prefs.getString("ssid", "").length() > 0; }

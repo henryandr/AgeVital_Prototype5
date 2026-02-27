@@ -9,6 +9,7 @@
 #include "AppConfig.h"
 #include "State.h"
 #include "StateMachine.h"
+#include "WiFiManager.h"
 
 // ===== DECLARACIONES EXTERNAS =====
 extern void readSensors();

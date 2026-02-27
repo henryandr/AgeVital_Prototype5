@@ -13,6 +13,7 @@
 #include "Estados.h"
 #include "State.h"
 #include "StateMachine.h"
+#include "WiFiManager.h"
 
 // --- Definiciones de hardware ---
 #define SCREEN_WIDTH 128
@@ -38,6 +39,7 @@ ClosedCube_HDC1080 hdc1080;
 DFRobot_B_LUX_V30B luxSensor(&Wire, 5);
 WebServer server(80);
 AppConfig appConfig;
+WiFiManager wifiManager;
 
 // ===== MÁQUINA DE ESTADOS =====
 StateMachine stateMachine;
