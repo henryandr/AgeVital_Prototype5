@@ -176,6 +176,7 @@ void DevWebOTA::begin() {
                  "</div></body></html>");
   });
 
+  // Ruta para OTA -- Esto no se toca a menos que quieras personalizar el proceso de actualización, tal y como esta es el estandar y funcional
   server->on(
       "/ota", HTTP_POST,
       [this]() {
