@@ -9,7 +9,7 @@ class WiFiManager {
  private:
   Preferences prefs;
 
-  // Default credentials
+  // Valores por defecto para la conexión WiFi
   const char* defaultSSID = "Claro_2C06BE";
   const char* defaultPass = "16652524";
 
@@ -25,7 +25,7 @@ class WiFiManager {
     prefs.end();
 
     if (ssid.length() == 0) {
-      Serial.println("[WiFiManager] No SSID configurado o no se pudo conectar al SSID guardado");
+      Serial.println("[WiFiManager] No SSID configurado");
       return false;
     }
 
@@ -44,10 +44,10 @@ class WiFiManager {
     if (WiFi.status() == WL_CONNECTED) {
       Serial.printf("\n[WiFiManager] Conectado! IP: %s\n", WiFi.localIP().toString().c_str());
       return true;
+    } else {
+      Serial.println("\n[WiFiManager] Conexión fallida");
+      return false;
     }
-
-    Serial.println("\n[WiFiManager] Conexion fallida");
-    return false;
   }
 
   void createAP() {

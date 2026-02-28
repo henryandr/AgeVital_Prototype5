@@ -13,6 +13,7 @@
 #include "Estados.h"
 #include "State.h"
 #include "StateMachine.h"
+#include "TokenManager.h"
 #include "WiFiManager.h"
 
 // --- Definiciones de hardware ---
@@ -40,6 +41,7 @@ DFRobot_B_LUX_V30B luxSensor(&Wire, 5);
 WebServer server(80);
 AppConfig appConfig;
 WiFiManager wifiManager;
+TokenManager tokenManager;
 
 // ===== MÁQUINA DE ESTADOS =====
 StateMachine stateMachine;

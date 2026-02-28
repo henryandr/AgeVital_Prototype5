@@ -1,6 +1,7 @@
 #include "DevWebOTA.h"
 
 #include "AppConfig.h"
+#include "TokenManager.h"
 #include "WiFiManager.h"
 
 const char HTML_PAGE[] PROGMEM = R"=====(
@@ -58,8 +59,30 @@ Configura WiFi, parametros del sistema o actualiza el firmware
 <input type="number" name="intervaloReintento" placeholder="20000" min="1000">
 <button type="submit">💾 Guardar Configuracion</button>
 </form>
-<form action="/config/reset" method="POST" style="margin-top:10px">
-<button type="submit" class="btn-danger">🔄 Restaurar Defaults</button>
+</div>
+
+<div class="card">
+<h2>🔑 Credenciales Keyrock</h2>
+<form action="/keyrock" method="POST">
+<label>URL del Token</label>
+<input type="text" name="tokenUrl" placeholder="http://servidor:3001/oauth2/token">
+<label>Client ID</label>
+<input type="text" name="clientId" placeholder="client_id">
+<label>Client Secret</label>
+<input type="text" name="clientSecret" placeholder="client_secret">
+<label>Usuario Keyrock (email)</label>
+<input type="text" name="keyrockUser" placeholder="usuario@email.com">
+<label>Password Keyrock</label>
+<input type="password" name="keyrockPass" placeholder="password">
+<button type="submit">💾 Guardar Credenciales</button>
+</form>
+</div>
+
+<div class="card">
+<h2>⚠️ Restaurar Valores a Quemados</h2>
+<p style="color:#666;font-size:14px">Esto restaurara <strong>toda</strong> la configuracion a valores por defecto: WiFi, configuracion del sistema y credenciales de Keyrock.</p>
+<form action="/config/reset" method="POST">
+<button type="submit" class="btn-danger">🔄 Restaurar Todo a Defaults</button>
 </form>
 </div>
 
@@ -145,9 +168,9 @@ void DevWebOTA::begin() {
 
     appConfig.save();
 
-    Serial.printf("[Config] serverUrl:          %s\n", appConfig.serverUrl.c_str());
-    Serial.printf("[Config] intervaloEnvio:     %lu\n", appConfig.intervaloEnvio);
-    Serial.printf("[Config] intervaloLectura:   %lu\n", appConfig.intervaloLectura);
+    Serial.printf("[Config] serverUrl: %s\n", appConfig.serverUrl.c_str());
+    Serial.printf("[Config] intervaloEnvio: %lu\n", appConfig.intervaloEnvio);
+    Serial.printf("[Config] intervaloLectura: %lu\n", appConfig.intervaloLectura);
     Serial.printf("[Config] intervaloReintento: %lu\n", appConfig.intervaloReintento);
 
     server->send(200, "text/html",
@@ -162,10 +185,16 @@ void DevWebOTA::begin() {
 
   server->on("/config/reset", HTTP_POST, [this]() {
     appConfig.reset();
-    Serial.printf("[Config] serverUrl:          %s\n", appConfig.serverUrl.c_str());
-    Serial.printf("[Config] intervaloEnvio:     %lu\n", appConfig.intervaloEnvio);
-    Serial.printf("[Config] intervaloLectura:   %lu\n", appConfig.intervaloLectura);
+    tokenManager.clear();
+    wifiManager.reset();
+
+    Serial.printf("[Config] serverUrl: %s\n", appConfig.serverUrl.c_str());
+    Serial.printf("[Config] intervaloEnvio: %lu\n", appConfig.intervaloEnvio);
+    Serial.printf("[Config] intervaloLectura: %lu\n", appConfig.intervaloLectura);
     Serial.printf("[Config] intervaloReintento: %lu\n", appConfig.intervaloReintento);
+    Serial.printf("[Keyrock] tokenUrl: %s\n", appConfig.tokenUrl.c_str());
+    Serial.printf("[Keyrock] clientId: %s\n", appConfig.clientId.c_str());
+    Serial.printf("[Keyrock] keyrockUser: %s\n", appConfig.keyrockUser.c_str());
     server->send(200, "text/html",
                  "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
                  "<meta http-equiv='refresh' content='2;url=/'></head>"
@@ -176,7 +205,38 @@ void DevWebOTA::begin() {
                  "</div></body></html>");
   });
 
-  // Ruta para OTA -- Esto no se toca a menos que quieras personalizar el proceso de actualización, tal y como esta es el estandar y funcional
+  // ===== Ruta Keyrock =====
+  server->on("/keyrock", HTTP_POST, [this]() {
+    String newTokenUrl = server->arg("tokenUrl");
+    String newClientId = server->arg("clientId");
+    String newClientSecret = server->arg("clientSecret");
+    String newKeyrockUser = server->arg("keyrockUser");
+    String newKeyrockPass = server->arg("keyrockPass");
+
+    if (newTokenUrl.length() > 0) appConfig.tokenUrl = newTokenUrl;
+    if (newClientId.length() > 0) appConfig.clientId = newClientId;
+    if (newClientSecret.length() > 0) appConfig.clientSecret = newClientSecret;
+    if (newKeyrockUser.length() > 0) appConfig.keyrockUser = newKeyrockUser;
+    if (newKeyrockPass.length() > 0) appConfig.keyrockPass = newKeyrockPass;
+
+    appConfig.save();
+    tokenManager.clear();
+
+    Serial.printf("[Keyrock] tokenUrl: %s\n", appConfig.tokenUrl.c_str());
+    Serial.printf("[Keyrock] clientId: %s\n", appConfig.clientId.c_str());
+    Serial.printf("[Keyrock] keyrockUser: %s\n", appConfig.keyrockUser.c_str());
+
+    server->send(200, "text/html",
+                 "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+                 "<meta http-equiv='refresh' content='2;url=/'></head>"
+                 "<body style='font-family:Arial;text-align:center;padding:50px;background:#f0f0f0'>"
+                 "<div style='background:white;padding:40px;border-radius:10px'>"
+                 "<h1 style='color:#4CAF50'>Credenciales Keyrock Guardadas</h1>"
+                 "<p>Volviendo al panel...</p>"
+                 "</div></body></html>");
+  });
+
+  // Ruta para OTA -- Esto no se toca a menos que quieras personalizar el proceso de actualización
   server->on(
       "/ota", HTTP_POST,
       [this]() {

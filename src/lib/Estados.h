@@ -9,6 +9,7 @@
 #include "AppConfig.h"
 #include "State.h"
 #include "StateMachine.h"
+#include "TokenManager.h"
 #include "WiFiManager.h"
 
 // ===== DECLARACIONES EXTERNAS =====
@@ -19,8 +20,6 @@ extern void displayDeveloperInfo();
 extern Adafruit_SSD1306 display;
 extern WebServer server;
 extern String construirPayload(float temperatura, float humedad, float luz, float ruido);
-
-#define DEV_PIN 26
 
 // ========================================
 // ESTADO INICIO

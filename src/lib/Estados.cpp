@@ -2,6 +2,7 @@
 
 #include "AppConfig.h"
 #include "DevWebOTA.h"
+#include "TokenManager.h"
 #include "WiFiManager.h"
 
 DevWebOTA* devWeb = nullptr;
@@ -132,7 +133,15 @@ void EstadoENVIO::execute() {
     Serial.println("Sin conexión WiFi, posponiendo envío");
     statemachine->clocks.proximo_envio = now + appConfig.intervaloReintento;
     statemachine->flags.envio_programado = true;
+    statemachine->ChangeState(new EstadoLECTURA());
+    return;
+  }
 
+  // Preguntamos por el token antes de intentar enviar, si no es valido o no se puede renovar, se pospone envio
+  if (!tokenManager.ensureValidToken()) {
+    Serial.println("[ENVIO] No se pudo obtener token, posponiendo envío");
+    statemachine->clocks.proximo_envio = now + appConfig.intervaloReintento;
+    statemachine->flags.envio_programado = true;
     statemachine->ChangeState(new EstadoLECTURA());
     return;
   }
@@ -141,6 +150,7 @@ void EstadoENVIO::execute() {
   HTTPClient http;
   http.begin(appConfig.serverUrl);
   http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-Auth-Token", tokenManager.getToken());
 
   String payload = construirPayload(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
   Serial.println("[ENVIO] Payload JSON:");
@@ -150,6 +160,9 @@ void EstadoENVIO::execute() {
 
   if (httpResponseCode >= 200 && httpResponseCode < 300) {
     Serial.printf("✓ Envío exitoso, código: %d\n", httpResponseCode);
+  } else if (httpResponseCode == 401) {
+    Serial.println("✗ Token rechazado (401), forzando renovación");
+    tokenManager.clear();
   } else {
     Serial.printf("✗ Error en envío: %s\n", http.errorToString(httpResponseCode).c_str());
   }
@@ -158,7 +171,6 @@ void EstadoENVIO::execute() {
 
   statemachine->clocks.proximo_envio = now + appConfig.intervaloEnvio;
   statemachine->flags.envio_programado = true;
-
   statemachine->ChangeState(new EstadoLECTURA());
 }
 
