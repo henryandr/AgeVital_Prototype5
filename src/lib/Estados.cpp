@@ -208,16 +208,19 @@ void EstadoDESARROLLADOR::execute() {
 
   devWeb->handle();
 
+  // Verificar si el botón pidió salir
+  if (!statemachine->flags.dev) {
+    Serial.println("Saliendo del modo desarrollador por botón...");
+    statemachine->ChangeState(new EstadoINICIO());
+    return;
+  }
+
   if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
     if (cmd == "exit") {
       Serial.println("Saliendo del modo desarrollador...");
       statemachine->flags.dev = false;
-      if (devWeb) {
-        delete devWeb;
-        devWeb = nullptr;
-      }
       statemachine->ChangeState(new EstadoINICIO());
       return;
     }
@@ -228,6 +231,10 @@ void EstadoDESARROLLADOR::onExit() {
   Serial.println("=== SALIENDO DE ESTADO: DESARROLLADOR ===");
   statemachine->flags.dev = false;
   primera_vez = true;
+  if (devWeb) {
+    delete devWeb;
+    devWeb = nullptr;
+  }
 }
 
 const char* EstadoDESARROLLADOR::getName() { return "DESARROLLADOR"; }

@@ -9,6 +9,7 @@
 #include <Wire.h>
 
 #include "AppConfig.h"
+#include "ButtonHandler.h"
 #include "ClosedCube_HDC1080.h"
 #include "Estados.h"
 #include "State.h"
@@ -22,7 +23,6 @@
 #define SoundSensorPin 35
 #define VREF 3.7
 #define BUTTON_PIN 27
-#define DEV_PIN 26
 
 // --- Factores de calibración ---
 const float NOISE_CALIBRATION_SLOPE = 1.618;
@@ -42,7 +42,7 @@ WebServer server(80);
 AppConfig appConfig;
 WiFiManager wifiManager;
 TokenManager tokenManager;
-
+ButtonHandler buttonHandler(BUTTON_PIN);
 // ===== MÁQUINA DE ESTADOS =====
 StateMachine stateMachine;
 
@@ -51,27 +51,6 @@ const int LUX_HISTORY_SIZE = 15;
 float luxHistory[LUX_HISTORY_SIZE];
 int luxHistoryIndex = 0;
 bool luxHistoryFull = false;
-
-// --- Interrupción del botón ---
-void IRAM_ATTR handleButtonPress() {
-  unsigned long now = millis();
-  const unsigned long DEBOUNCE_TIME = 300;
-
-  if (now - stateMachine.clocks.lastButtonPressTime > DEBOUNCE_TIME) {
-    stateMachine.clocks.lastButtonPressTime = now;
-    stateMachine.clocks.ultima_interaccion = now;
-
-    if (!stateMachine.isDisplayOn) {
-      stateMachine.isDisplayOn = true;
-    } else {
-      stateMachine.screenMode++;
-      if (stateMachine.screenMode > 3) {
-        stateMachine.screenMode = 0;
-      }
-    }
-    stateMachine.needsUpdate = true;
-  }
-}
 
 void setup() {
   Serial.begin(115200);
@@ -90,10 +69,8 @@ void setup() {
     while (1);
   }
 
-  // Configuración de pines
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  pinMode(DEV_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, FALLING);
+  // Configuración del botón
+  buttonHandler.begin();
 
   // Inicializar filtro de lux
   float initialLux = luxSensor.lightStrengthLux();
@@ -102,7 +79,7 @@ void setup() {
     luxHistory[i] = initialLux;
   }
 
-  appConfig.begin();  // Carga configuracion desde NVS, antes de iniciar porque si no se llena de informacion basura
+  appConfig.begin();  // Carga configuracion desde NVS
 
   stateMachine.flags.dev = true;
 
@@ -123,6 +100,34 @@ void setup() {
 }
 
 void loop() {
+  // Manejo del boton
+  ButtonHandler::Event event = buttonHandler.update();
+
+  if (event == ButtonHandler::SHORT_PRESS) {
+    stateMachine.clocks.ultima_interaccion = millis();
+
+    if (!stateMachine.isDisplayOn) {
+      stateMachine.isDisplayOn = true;
+    } else {
+      stateMachine.screenMode++;
+      if (stateMachine.screenMode > 3) {
+        stateMachine.screenMode = 0;
+      }
+    }
+    stateMachine.needsUpdate = true;
+    Serial.println("[Button] Short press -> cambiar pantalla");
+  }
+
+  if (event == ButtonHandler::LONG_PRESS) {
+    if (stateMachine.flags.dev) {
+      Serial.println("[Button] Long press -> salir de DESARROLLADOR");
+      stateMachine.flags.dev = false;
+    } else {
+      Serial.println("[Button] Long press -> entrar a DESARROLLADOR");
+      stateMachine.flags.dev = true;
+    }
+  }
+
   // Actualizamos la máquina de estados
   stateMachine.update();
 }

@@ -20,9 +20,7 @@ struct Clocks {
   unsigned long tiempo_lectura = 0;
   unsigned long tiempo_actual = 0;
   unsigned long ultima_interaccion = 0;
-  unsigned long ultimo_debounce = 0;
   unsigned long proximo_envio = 0;
-  volatile unsigned long lastButtonPressTime = 0;
 };
 
 // Estructura de datos de sensores
@@ -37,7 +35,6 @@ struct SensorData {
 // ===== NUEVA: Estructura de configuración =====
 struct Config {
   unsigned long TIEMPO_INACTIVIDAD = 1000000;  // 10 segundos
-  unsigned long DEBOUNCE_TIME = 300;           // 300 ms
 };
 
 class StateMachine {
