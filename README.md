@@ -1,6 +1,6 @@
 # 🌿 AgeVital Prototype 5 (TARS 1)
 
-**Sistema de Monitoreo Ambiental IoT con Máquina de Estados**
+**Sistema de Monitoreo Ambiental IoT con Máquina de Estados — ESP32**
 
 ---
 
@@ -8,120 +8,49 @@
 
 - [Descripción General](#-descripción-general)
 - [Características](#-características)
-- [Arquitectura del Sistema](#-arquitectura-del-sistema)
-- [Requisitos](#-requisitos)
 - [Estructura del Proyecto](#-estructura-del-proyecto)
-- [Instalación desde Cero](#-instalación-desde-cero)
-- [Configuración de Hardware](#-configuración-de-hardware)
-- [Funcionamiento de la Máquina de Estados](#-funcionamiento-de-la-máquina-de-estados)
+- [Instalación y Compilación](#-instalación-y-compilación)
+- [Arquitectura del Software](#-arquitectura-del-software)
+- [Máquina de Estados (StateMachine)](#-máquina-de-estados-statemachine)
+- [Estados Concretos](#-estados-concretos)
+- [ButtonHandler](#-buttonhandler)
+- [WiFiManager](#-wifimanager)
+- [AppConfig](#-appconfig)
+- [TokenManager](#-tokenmanager)
+- [DevWebOTA](#-devwebota)
+- [Flujo del Programa (TARS.ino)](#-flujo-del-programa-tarsino)
 - [Diagrama de Clases](#-diagrama-de-clases)
-- [Guía de Uso](#-guía-de-uso)
+- [Pruebas sin Hardware](#-pruebas-sin-hardware)
+- [Mejoras Pendientes](#-mejoras-pendientes)
 
 ---
 
 ## 🌟 Descripción General
 
-**AgeVital Prototype 5** es un sistema embebido de monitoreo ambiental basado en ESP32 que mide **5 variables ambientales críticas** y las envía a un servidor mediante HTTP. El proyecto implementa el **Patrón de Diseño State** para una gestión eficiente y modular de los diferentes modos de operación.
+**AgeVital Prototype 5 (TARS 1)** es un firmware para ESP32 que implementa un sistema de monitoreo ambiental usando el **Patrón de Diseño State**. Lee sensores, muestra datos en pantalla OLED, y envía información a un servidor **Orion Context Broker** (FIWARE) mediante HTTP POST.
 
-### Variables Monitoreadas:
+### Datos que maneja
 
-| Variable | Sensor | Unidad | Frecuencia |
-|----------|--------|--------|------------|
-| 🌡️ **Temperatura** | HDC1080 | °C | 2 segundos |
-| 💧 **Humedad** | HDC1080 | % | 2 segundos |
-| ☀️ **Luz** | DFRobot B-LUX V30B | lux | 2 segundos |
-| 🔊 **Ruido** | Sensor Analógico | dBA | 2 segundos |
-| ⏱️ **Timestamp** | millis() | ms | En cada envío |
-
-### Envío de Datos:
-
-Los datos se envían cada **15 segundos** en formato JSON a un servidor **Orion Context Broker** mediante HTTP POST.
+| Variable | Unidad | Frecuencia de Lectura | Frecuencia de Envío |
+|----------|--------|-----------------------|---------------------|
+| Temperatura | °C | Cada 2 segundos | Cada 15 segundos |
+| Humedad | % | Cada 2 segundos | Cada 15 segundos |
+| Luz | lux | Cada 2 segundos | Cada 15 segundos |
+| Ruido | dBA | Cada 2 segundos | Cada 15 segundos |
 
 ---
 
 ## ✨ Características
 
-- ✅ **Arquitectura Modular:** Implementación del Patrón State para separación de responsabilidades
-- ✅ **Gestión Automática de Estados:** Transiciones inteligentes entre modos de operación
-- ✅ **Pantalla OLED Interactiva:** 4 modos de visualización con apagado automático
-- ✅ **Modo Desarrollador:** Servidor web integrado para configuración avanzada
-- ✅ **Configuración WiFi Persistente:** Almacenamiento en EEPROM
-- ✅ **Filtrado de Datos:** Detección y corrección de lecturas anómalas
-- ✅ **Reconexión Automática:** Manejo inteligente de pérdida de WiFi
-- ✅ **Bajo Consumo:** Optimización de recursos del ESP32
-
----
-
-## 🏗️ Arquitectura del Sistema
-
-### Diagrama de Arquitectura General
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    ESP32 (Main Controller)                  │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌───────────────────────────────────────────────────┐      │
-│  │         StateMachine (Motor Principal)            │      │
-│  │  • Gestiona transiciones entre estados           │       │
-│  │  • Mantiene datos compartidos (flags, clocks)    │       │
-│  │  • Coordina el flujo del programa                │       │
-│  └───────────────────────────────────────────────────┘      │
-│         │                                                   │
-│         │ Controla                                          │
-│         ↓                                                   │
-│  ┌──────────────────────────────────────────────────┐       │
-│  │              Estados Concretos                   │       │
-│  ├──────────────────────────────────────────────────┤       │
-│  │  🔵 EstadoINICIO        (Inicialización)         │       │
-│  │  🟢 EstadoLECTURA       (Lectura de sensores)    │       │
-│  │  🟡 EstadoENVIO         (Envío HTTP)             │       │
-│  │  🔴 EstadoDESARROLLADOR (Configuración web)      │       │
-│  └──────────────────────────────────────────────────┘       │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-         │                    │                    │
-         ↓                    ↓                    ↓
-    ┌────────┐          ┌─────────┐          ┌────────┐
-    │Sensores│          │  WiFi   │          │ OLED   │
-    │I2C/ADC │          │  HTTP   │          │Display │
-    └────────┘          └─────────┘          └────────┘
-```
-
----
-
-## 📦 Requisitos
-
-### Hardware
-
-| Componente | Especificación | Cantidad |
-|------------|----------------|----------|
-| Microcontrolador | ESP32 Dev Module | 1 |
-| Sensor Temp/Hum | HDC1080 (I2C) | 1 |
-| Sensor de Luz | DFRobot B-LUX V30B (I2C) | 1 |
-| Sensor de Sonido | Micrófono analógico | 1 |
-| Pantalla | OLED SSD1306 128x64 (I2C) | 1 |
-| Botón | Pulsador (modo pantalla) | 1 |
-| Botón | Pulsador (modo desarrollador) | 1 |
-
-### Software
-
-- **Arduino IDE:** 1.8.19 o superior (o Arduino IDE 2.x)
-- **Plataforma ESP32:** Instalada en Arduino IDE
-- **Librerías Arduino:**
-  - Adafruit GFX Library
-  - Adafruit SSD1306
-  - ArduinoJson (v6.x)
-  - DFRobot_B_LUX_V30B
-  - HTTPClient (incluida en ESP32)
-  - WiFi (incluida en ESP32)
-  - WebServer (incluida en ESP32)
-
-### Librerías Personalizadas (incluidas en el proyecto)
-
-- **ClosedCube_HDC1080:** Driver para sensor de temperatura/humedad
-- **ESPaccesspoint:** Gestión de Access Point y configuración WiFi
-- **Settings:** Almacenamiento persistente en EEPROM
+- ✅ **Patrón State:** 4 estados concretos con transiciones claras y ciclo de vida definido (`onEnter`, `execute`, `onExit`)
+- ✅ **ButtonHandler por Polling:** Detección de short press y long press sin interrupciones (IRAM_ATTR)
+- ✅ **Pantalla OLED:** 4 modos de visualización con apagado automático por inactividad
+- ✅ **Modo Desarrollador:** Servidor web con OTA, salida por botón o Serial
+- ✅ **WiFiManager:** Conexión WiFi con portal cautivo (Access Point) para configuración inicial
+- ✅ **AppConfig:** Persistencia de configuración en EEPROM
+- ✅ **TokenManager:** Gestión de autenticación con el servidor
+- ✅ **Filtrado de Datos:** Historial de 15 muestras de lux para corregir lecturas anómalas
+- ✅ **Calibración:** Offsets configurables para temperatura, humedad y luz
 
 ---
 
@@ -130,471 +59,588 @@ Los datos se envían cada **15 segundos** en formato JSON a un servidor **Orion 
 ```
 AgeVital_Prototype5/
 │
-├── libraries/                          📚 Librerías Arduino personalizadas
-│   ├── ClosedCube_HDC1080/            → Driver HDC1080 (I2C)
-│   ├── DFRobot_B_LUX_V30B/            → Driver sensor de luz
-│   └── ESPaccesspoint/                → Gestión de Access Point y WiFi
-│       ├── ESPaccesspoint.h
-│       ├── ESPaccesspoint.cpp
-│       ├── Settings.h
-│       └── Settings.cpp
+├── README.md
+├── frecuencia de transmision de datos.md
+├── .gitignore
+│
+├── library/                          📚 Librerías de terceros (copiar a Arduino/libraries/)
+│   ├── Adafruit_GFX_Library/
+│   ├── Adafruit_SSD1306/
+│   ├── ClosedCube_HDC1080/
+│   └── DFRobot_B_LUX_V30B/
 │
 └── src/
-    └── ME_prototipo/                   💻 Código fuente principal
-        ├── ME_prototipo.ino           ← Archivo principal (setup/loop)
-        │
-        └── lib/                        🤖 Máquina de Estados
-            ├── State.h                ← Clase base abstracta
-            ├── StateMachine.h         ← Definición de la máquina
-            ├── StateMachine.cpp       ← Implementación de la máquina
-            └── Estados.cpp            ← Todos los estados concretos
+    └── TARS/                         💻 Carpeta del sketch (todo junto para compilar)
+        ├── TARS.ino                 ← Punto de entrada: setup() y loop()
+        ├── State.h                  ← Clase base abstracta
+        ├── StateMachine.h           ← Definición de la máquina de estados
+        ├── StateMachine.cpp         ← Implementación de la máquina
+        ├── Estados.h                ← Declaración de los 4 estados
+        ├── Estados.cpp              ← Implementación de los 4 estados
+        ├── ButtonHandler.h          ← Detección de botón por polling
+        ├── WiFiManager.h            ← Gestión de conexión WiFi y AP
+        ├── AppConfig.h              ← Configuración persistente (EEPROM)
+        ├── TokenManager.h           ← Autenticación con el servidor
+        └── DevWebOTA.h              ← Servidor web + actualización OTA
 ```
 
-### Descripción de Carpetas
-
-#### 📚 `libraries/`
-
-Contiene las **librerías personalizadas** del proyecto que deben instalarse en Arduino IDE:
-
-- **ClosedCube_HDC1080:** Librería modificada para el sensor de temperatura y humedad
-- **DFRobot_B_LUX_V30B:** Librería del sensor de luz
-- **ESPaccesspoint:** Librería custom que incluye:
-  - Configuración de Access Point WiFi
-  - Gestión de credenciales WiFi
-  - Almacenamiento persistente en EEPROM
-  - **Configuración de URL del servidor** para envío de datos
-
-> ⚠️ **Importante:** Estas librerías están incluidas en el repositorio porque contienen **modificaciones específicas** para este proyecto (como la configuración del servidor Orion Context Broker).
-
-#### 💻 `src/ME_prototipo/`
-
-Contiene el código fuente principal del proyecto:
-
-- **`ME_prototipo.ino`:** Archivo principal de Arduino con `setup()` y `loop()`
-- **`lib/`:** Implementación de la **Máquina de Estados**
-  - `State.h` - Interfaz base para todos los estados
-  - `StateMachine.h/cpp` - Motor de la máquina de estados
-  - `Estados.cpp` - Implementación de los 4 estados concretos
+> **¿Por qué todo en una carpeta?** Arduino IDE requiere que el `.ino` y todos los archivos `.h` / `.cpp` propios estén en la misma carpeta para compilar correctamente.
 
 ---
 
-## 🚀 Instalación desde Cero
+## 🚀 Instalación y Compilación
 
-Sigue esta guía paso a paso si **nunca has trabajado con ESP32 o Arduino**.
+### 1. Instalar Arduino IDE
 
-### Paso 1️⃣: Instalar Arduino IDE
+Descargar desde [https://www.arduino.cc/en/software](https://www.arduino.cc/en/software)
 
-1. Descarga **Arduino IDE** desde [https://www.arduino.cc/en/software](https://www.arduino.cc/en/software)
-2. Instala la aplicación en tu sistema operativo
-3. Abre Arduino IDE
+### 2. Configurar soporte ESP32
 
-### Paso 2️⃣: Configurar Soporte para ESP32
-
-1. Abre **Arduino IDE**
-2. Ve a `Archivo` → `Preferencias`
-3. En **"Gestor de URLs adicionales de tarjetas"** pega esta URL:
+1. `Archivo` → `Preferencias` → en **URLs adicionales** pegar:
    ```
    https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
    ```
-4. Click en **OK**
-5. Ve a `Herramientas` → `Placa` → `Gestor de tarjetas...`
-6. Busca **"esp32"**
-7. Instala **"esp32 by Espressif Systems"** (versión 2.0.x o superior)
-8. Espera a que termine la instalación
+2. `Herramientas` → `Placa` → `Gestor de tarjetas` → buscar **esp32** → instalar
 
-### Paso 3️⃣: Instalar Librerías Estándar
+### 3. Instalar librerías desde el Library Manager
 
-1. Ve a `Herramientas` → `Administrar Bibliotecas...`
-2. Instala las siguientes librerías **una por una**:
+`Herramientas` → `Administrar Bibliotecas` → instalar:
 
-| Librería | Versión | Autor |
-|----------|---------|-------|
-| Adafruit GFX Library | Última | Adafruit |
-| Adafruit SSD1306 | Última | Adafruit |
-| ArduinoJson | 6.x | Benoit Blanchon |
+| Librería | Autor |
+|----------|-------|
+| Adafruit GFX Library | Adafruit |
+| Adafruit SSD1306 | Adafruit |
+| ArduinoJson (v6.x) | Benoit Blanchon |
 
-Para instalar:
-- Escribe el nombre en la barra de búsqueda
-- Click en **Instalar**
-- Espera a que termine
+### 4. Instalar librerías del proyecto
 
-### Paso 4️⃣: Clonar el Repositorio
+Copiar las carpetas de `library/` a la carpeta de librerías de Arduino:
 
-**Opción A: Con Git (recomendado)**
+| SO | Ruta |
+|----|------|
+| Windows | `C:\Users\TuUsuario\Documents\Arduino\libraries\` |
+| macOS | `/Users/TuUsuario/Documents/Arduino/libraries/` |
+| Linux | `~/Arduino/libraries/` |
 
-```bash
-cd ~/Documentos
-git clone https://github.com/henryandr/AgeVital_Prototype5.git
-cd AgeVital_Prototype5
-```
+### 5. Compilar y subir
 
-**Opción B: Descarga directa**
-
-1. Ve a [https://github.com/henryandr/AgeVital_Prototype5](https://github.com/henryandr/AgeVital_Prototype5)
-2. Click en el botón verde **"Code"** → **"Download ZIP"**
-3. Descomprime el archivo en `Documentos/AgeVital_Prototype5`
-
-### Paso 5️⃣: Instalar Librerías Personalizadas
-
-Las librerías personalizadas deben copiarse manualmente a la carpeta de Arduino:
-
-#### En Windows:
-
-```
-Origen: AgeVital_Prototype5/libraries/*
-Destino: C:\Users\TuUsuario\Documents\Arduino\libraries\
-```
-
-#### En macOS:
-
-```
-Origen: AgeVital_Prototype5/libraries/*
-Destino: /Users/TuUsuario/Documents/Arduino/libraries/
-```
-
-#### En Linux:
-
-```
-Origen: AgeVital_Prototype5/libraries/*
-Destino: ~/Arduino/libraries/
-```
-
-**Pasos detallados:**
-
-1. Abre la carpeta `AgeVital_Prototype5/libraries/`
-2. Copia **todas las carpetas** que encuentres:
-   - `ClosedCube_HDC1080`
-   - `DFRobot_B_LUX_V30B`
-   - `ESPaccesspoint`
-3. Pega estas carpetas en la carpeta `Arduino/libraries/` de tu usuario
-4. **Cierra y vuelve a abrir Arduino IDE** para que reconozca las nuevas librerías
-
-### Paso 6️⃣: Abrir el Proyecto
-
-1. En Arduino IDE, ve a `Archivo` → `Abrir`
-2. Navega a:
-   ```
-   AgeVital_Prototype5/src/ME_prototipo/ME_prototipo.ino
-   ```
-3. Click en **Abrir**
-
-Deberías ver varias pestañas en la parte superior:
-
-```
-[ME_prototipo] [StateMachine.cpp] [StateMachine.h] [Estados.cpp] [State.h]
-```
-
-### Paso 7️⃣: Configurar la Placa ESP32
-
-1. Ve a `Herramientas` → `Placa` → `ESP32 Arduino` → **ESP32 Dev Module**
-2. Configura los siguientes parámetros:
-
-```
-Herramientas →
-  ├─ Upload Speed: 921600
-  ├─ CPU Frequency: 240MHz (WiFi/BT)
-  ├─ Flash Frequency: 80MHz
-  ├─ Flash Mode: QIO
-  ├─ Flash Size: 4MB (32Mb)
-  ├─ Partition Scheme: Default 4MB with spiffs
-  ├─ Core Debug Level: None
-  └─ PSRAM: Disabled
-```
-
-### Paso 8️⃣: Conectar el ESP32
-
-1. Conecta el ESP32 a tu computadora mediante cable USB
-2. Ve a `Herramientas` → `Puerto`
-3. Selecciona el puerto COM donde está el ESP32:
-   - **Windows:** `COM3`, `COM4`, etc.
-   - **macOS:** `/dev/cu.usbserial-XXXX`
-   - **Linux:** `/dev/ttyUSB0`
-
-> 💡 **Tip:** Si no aparece ningún puerto, instala el driver CH340 o CP2102 según tu placa.
-
-### Paso 9️⃣: Compilar y Subir
-
-1. Click en el botón **✓ Verificar** (esquina superior izquierda)
-2. Espera a que compile sin errores
-3. Si compila correctamente, click en **→ Subir**
-4. Espera a que termine la carga
-
-**Salida esperada:**
-
-```
-Sketch uses XXXXX bytes (XX%) of program storage space.
-Global variables use XXXX bytes (XX%) of dynamic memory.
-Hard resetting via RTS pin...
-```
-
-### Paso 🔟: Configurar WiFi (Primera Vez)
-
-Al iniciar por primera vez, el ESP32 creará un **Access Point**:
-
-1. Conéctate a la red WiFi: **`ESP-HOTSPOT`**
-2. Abre un navegador y ve a: `http://192.168.4.1`
-3. Ingresa:
-   - **SSID:** Nombre de tu red WiFi
-   - **Contraseña:** Contraseña de tu red
-   - **URL del servidor:** `http://TU_SERVIDOR:1026/v2/entities/AmbientMonitor_001/attrs`
-4. Click en **Guardar**
-5. El ESP32 se reiniciará y se conectará a tu WiFi
+1. Abrir `src/TARS/TARS.ino` en Arduino IDE
+2. `Herramientas` → `Placa` → **ESP32 Dev Module**
+3. Seleccionar puerto COM
+4. Click en **→ Subir**
 
 ---
 
-## 🔌 Configuración de Hardware
-
-### Diagrama de Conexiones
+## 🏗️ Arquitectura del Software
 
 ```
-                    ┌─────────────────────┐
-                    │       ESP32         │
-                    │   Dev Module        │
-                    ├─────────────────────┤
-                    │                     │
-      HDC1080       │ GPIO 21 (SDA) ──────┼────── I2C SDA (HDC1080, B-LUX, OLED)
-      B-LUX V30B    │ GPIO 22 (SCL) ──────┼────── I2C SCL (HDC1080, B-LUX, OLED)
-      OLED SSD1306  │                     │
-                    │ GPIO 27 ────────────┼────── Botón Pantalla (Pull-up interno)
-                    │ GPIO 26 ────────────┼────── Botón Desarrollador (Pull-up interno)
-                    │ GPIO 35 (ADC) ──────┼────── Sensor de Sonido
-                    │                     │
-                    │ 3.3V ───────────────┼────── VCC (todos los sensores)
-                    │ GND ────────────────┼────── GND (todos los sensores)
-                    └─────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                     TARS.ino (loop)                         │
+│  ┌──────────────────┐    ┌──────────────────────────┐       │
+│  │  ButtonHandler    │    │  StateMachine.update()   │       │
+│  │  .update()        │    │  → ejecuta estado actual │       │
+│  │  → pone banderas  │    │  → estado lee banderas   │       │
+│  └──────────────────┘    └──────────────────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              │               │               │
+     ┌────────▼──┐    ┌──────▼─────┐   ┌─────▼──────────┐
+     │ INICIO    │    │  LECTURA   │   │ DESARROLLADOR  │
+     │ WiFi      │    │  Sensores  │   │ Web + OTA      │
+     │ → LECTURA │    │  Pantalla  │   │ Serial "exit"  │
+     └───────────┘    │  → ENVIO   │   └────────────────┘
+                      └──────┬─────┘
+                             │
+                      ┌──────▼─────┐
+                      │   ENVIO    │
+                      │  HTTP POST │
+                      │  → LECTURA │
+                      └────────────┘
 ```
 
-### Tabla de Conexiones Detalladas
+### Principio clave
 
-| ESP32 Pin | Función | Dispositivo | Pin Dispositivo |
-|-----------|---------|-------------|-----------------|
-| **GPIO 21** | SDA (I2C) | HDC1080 | SDA |
-| **GPIO 21** | SDA (I2C) | B-LUX V30B | SDA |
-| **GPIO 21** | SDA (I2C) | OLED | SDA |
-| **GPIO 22** | SCL (I2C) | HDC1080 | SCL |
-| **GPIO 22** | SCL (I2C) | B-LUX V30B | SCL |
-| **GPIO 22** | SCL (I2C) | OLED | SCL |
-| **GPIO 27** | Entrada Digital | Botón Pantalla | Terminal 1 |
-| **GPIO 26** | Entrada Digital | Botón Desarrollador | Terminal 1 |
-| **GPIO 35** | ADC | Sensor Sonido | OUT |
-| **3.3V** | Alimentación | Todos | VCC |
-| **GND** | Tierra | Todos | GND |
-| **GND** | Tierra | Botón Pantalla | Terminal 2 |
-| **GND** | Tierra | Botón Desarrollador | Terminal 2 |
-
-### Direcciones I2C
-
-| Dispositivo | Dirección I2C | Modificable |
-|-------------|---------------|-------------|
-| HDC1080 | `0x40` | No |
-| OLED SSD1306 | `0x3C` | Sí (jumper) |
-| B-LUX V30B | Por defecto | Depende del modelo |
-
-### Esquema de Botones
-
-```
-     ┌───┐
-  ───┤   ├───  GPIO 27 (Pull-up interno activado)
-     └───┘
-       │
-      GND
-
-     ┌───┐
-  ───┤   ├───  GPIO 26 (Pull-up interno activado)
-     └───┘
-       │
-      GND
-```
-
-**Configuración:**
-- Resistencias pull-up **internas** activadas en el código
-- Botón presionado = `LOW`
-- Botón suelto = `HIGH`
+> El `loop()` solo **pone banderas**. Los estados **reaccionan** a esas banderas en su `execute()`.
 
 ---
 
-## 🤖 Funcionamiento de la Máquina de Estados
+## 🤖 Máquina de Estados (StateMachine)
 
-La máquina de estados gestiona el flujo del programa de forma modular y eficiente.
+### Archivos: `StateMachine.h` / `StateMachine.cpp`
 
-### Estados del Sistema
+Gestiona el estado actual, las transiciones y los datos compartidos entre estados.
 
-| Estado | Símbolo | Responsabilidad | Duración |
-|--------|---------|-----------------|----------|
-| **INICIO** | 🔵 | Inicialización del sistema | ~100ms |
-| **LECTURA** | 🟢 | Lectura de sensores y actualización de pantalla | Continuo |
-| **ENVIO** | 🟡 | Envío de datos al servidor HTTP | ~2 segundos |
-| **DESARROLLADOR** | 🔴 | Configuración web y diagnósticos | Hasta salir manualmente |
+### Métodos
 
-### Diagrama de Transición de Estados
+| Método | Descripción |
+|--------|-------------|
+| `begin(State* initial)` | Establece el estado inicial y llama su `onEnter()` |
+| `update()` | Actualiza `tiempo_actual` y llama `execute()` del estado activo |
+| `ChangeState(State* newState)` | Llama `onExit()` del actual, `onEnter()` del nuevo, y cambia |
+| `getCurrentStateName()` | Retorna el nombre del estado activo |
 
-```
-                        [POWER ON]
-                            │
-                            ↓
-                    ┌───────────────┐
-                    │  🔵 INICIO    │
-                    │ (First Scan)  │
-                    └───────┬───────┘
-                            │
-                            │ Automático
-                            │ (~100ms)
-                            ↓
-        ┌───────────────────────────────────────┐
-        │          🟢 LECTURA                   │
-        │  • Lee sensores cada 2s               │
-        │  • Actualiza pantalla                 │
-        │  • Verifica tiempo de envío           │
-        └───────┬───────────────────────────────┘
-                │           ↑
-                │           │
-                │ Timer     │ Automático
-                │ 15s       │ tras envío
-                │           │
-                ↓           │
-        ┌───────────────────┴───────────────┐
-        │          🟡 ENVIO                 │
-        │  • Verifica WiFi                  │
-        │  • Envía datos por HTTP           │
-        │  • Programa siguiente envío       │
-        └───────────────────────────────────┘
+### Estructuras de datos compartidas
 
+```cpp
+struct Flags {
+  bool inicio;
+  bool lectura;
+  bool envio;
+  bool dev;           // true = entrar a DESARROLLADOR
+};
 
-        [Desde cualquier estado]
-                │
-                │ Botón DEV presionado
-                │ (GPIO 26 LOW)
-                ↓
-        ┌───────────────────────────────────┐
-        │    🔴 DESARROLLADOR                │
-        │  • Inicia servidor web             │
-        │  • Muestra información técnica     │
-        │  • Permite configuración           │
-        └───────┬───────────────────────────┘
-                │
-                │ Botón DEV soltado
-                │ (GPIO 26 HIGH)
-                ↓
-        Regresa a 🔵 INICIO
+struct Clocks {
+  unsigned long tiempo_actual;
+  unsigned long tiempo_lectura;
+  unsigned long ultima_interaccion;
+  unsigned long proximo_envio;
+};
+
+struct SensorData {
+  float temp;
+  float hum;
+  float lux;
+  float voltage;
+  float dbValue;
+};
+
+struct Config {
+  unsigned long TIEMPO_INACTIVIDAD;  // ms para apagar pantalla
+};
 ```
 
-### Condiciones de Transición
+### Variables públicas
 
-| Estado Origen | Estado Destino | Condición | Descripción |
-|---------------|----------------|-----------|-------------|
-| 🔵 INICIO | 🟢 LECTURA | Automático | Tras inicialización exitosa |
-| 🔵 INICIO | 🔴 DESARROLLADOR | `flags.dev == true` | Si se detectó botón presionado al inicio |
-| 🟢 LECTURA | 🟡 ENVIO | `millis() >= proximo_envio` | Cada 15 segundos |
-| 🟢 LECTURA | 🔴 DESARROLLADOR | `flags.dev == true` | Presión del botón DEV |
-| 🟡 ENVIO | 🟢 LECTURA | Automático | Tras envío (exitoso o fallido) |
-| 🟡 ENVIO | 🔴 DESARROLLADOR | `flags.dev == true` | Presión del botón DEV |
-| 🔴 DESARROLLADOR | 🔵 INICIO | `GPIO 26 == HIGH` | Al soltar el botón DEV |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `flags` | `Flags` | Banderas de control de estados |
+| `clocks` | `Clocks` | Tiempos y relojes del sistema |
+| `sensors` | `SensorData` | Últimas lecturas de sensores |
+| `settings` | `Config` | Configuración de tiempos |
+| `screenMode` | `int` | Modo de pantalla actual (0-3) |
+| `isDisplayOn` | `bool` | Si la pantalla está encendida |
+| `needsUpdate` | `bool` | Si la pantalla necesita redibujarse |
+
+---
+
+## 📦 Estados Concretos
+
+### Archivo: `State.h` (Clase base abstracta)
+
+Define la interfaz que todos los estados deben implementar:
+
+| Método virtual | Cuándo se llama | Propósito |
+|----------------|-----------------|-----------|
+| `onEnter()` | Al entrar al estado (`ChangeState`) | Inicialización |
+| `execute()` | En cada `loop()` vía `update()` | Lógica principal |
+| `onExit()` | Al salir del estado (`ChangeState`) | Limpieza |
+| `getName()` | Cuando se necesita el nombre | Retorna `const char*` |
+
+---
+
+### 🔵 EstadoINICIO
+
+**Responsabilidad:** Conectar WiFi e inicializar el sistema.
+
+| Paso | Acción |
+|------|--------|
+| `onEnter()` | Log de entrada |
+| `execute()` | Intenta conectar WiFi. Si hay credenciales guardadas → STA. Si no → crea AP (`ESP-HOTSPOT`). Cuando termina → `ChangeState(EstadoLECTURA)`. Si `flags.dev == true` → `ChangeState(EstadoDESARROLLADOR)` |
+| `onExit()` | Log de salida |
+
+---
+
+### 🟢 EstadoLECTURA
+
+**Responsabilidad:** Leer sensores, actualizar pantalla, verificar si toca enviar.
+
+| Paso | Acción |
+|------|--------|
+| `onEnter()` | Programa siguiente lectura |
+| `execute()` | Si `flags.dev == true` → cambia a DESARROLLADOR. Si `millis() >= tiempo_lectura` → llama `readSensors()`. Si `needsUpdate` o nueva lectura → llama `updateDisplay()`. Si pantalla inactiva > `TIEMPO_INACTIVIDAD` → apaga. Si `millis() >= proximo_envio` → cambia a ENVIO |
+| `onExit()` | Log de salida |
+
+**Modos de pantalla (`screenMode`):**
+
+| Modo | Muestra |
+|------|---------|
+| 0 | Todos los sensores |
+| 1 | Temperatura y Humedad |
+| 2 | Luz |
+| 3 | Ruido |
+
+---
+
+### 🟡 EstadoENVIO
+
+**Responsabilidad:** Construir JSON y enviar por HTTP POST.
+
+| Paso | Acción |
+|------|--------|
+| `onEnter()` | Log de entrada |
+| `execute()` | Si `flags.dev == true` → cambia a DESARROLLADOR. Construye payload JSON con `construirPayload()`. Envía HTTP POST al servidor. Programa `proximo_envio`. Cambia a LECTURA |
+| `onExit()` | Log de salida |
+
+**Formato del JSON enviado:**
+
+```json
+{
+  "temperature": { "type": "Number", "value": "24.5" },
+  "humidity": { "type": "Number", "value": "60.2" },
+  "illuminance": { "type": "Number", "value": "450.0" },
+  "noise": { "type": "Number", "value": "45.3" }
+}
+```
+
+---
+
+### 🔴 EstadoDESARROLLADOR
+
+**Responsabilidad:** Levantar servidor web con OTA, permitir configuración.
+
+| Paso | Acción |
+|------|--------|
+| `onEnter()` | Log de entrada |
+| `execute()` | Si `primera_vez` → crea `DevWebOTA` y llama `begin()`. Llama `devWeb->handle()`. Si `flags.dev == false` → `ChangeState(EstadoINICIO)`. Si Serial recibe `"exit"` → `flags.dev = false`, `ChangeState(EstadoINICIO)` |
+| `onExit()` | `flags.dev = false`, `delete devWeb`, `primera_vez = true` |
+
+**Dos formas de salir:**
+
+| Método | Para quién |
+|--------|------------|
+| Long press (5s) | ESPs con botón |
+| Serial: `exit` | ESPs sin botón |
+
+---
+
+## 🔘 ButtonHandler
+
+### Archivo: `ButtonHandler.h`
+
+Detecta eventos de botón por **polling** (sin interrupciones). Se llama en cada ciclo del `loop()`.
+
+### Clase
+
+```cpp
+class ButtonHandler {
+ public:
+  enum Event { NONE, SHORT_PRESS, LONG_PRESS };
+
+  ButtonHandler(uint8_t pin);
+  void begin();       // Configura el pin como INPUT_PULLUP
+  Event update();     // Revisa el botón y retorna el evento
+};
+```
+
+### Constantes
+
+| Constante | Valor | Función |
+|-----------|-------|---------|
+| `DEBOUNCE_TIME` | 50ms | Tiempo mínimo para confirmar que no es ruido eléctrico |
+| `LONG_PRESS_TIME` | 5000ms | Tiempo para detectar long press |
+
+### Lógica del `update()`
+
+```
+Lee el pin
+│
+├─ ¿Cambió de estado? → Reiniciar debounce timer
+│
+├─ ¿Está presionado y pasaron 5s? → Retorna LONG_PRESS (una sola vez)
+│
+└─ ¿Soltó después del debounce y no fue long press? → Retorna SHORT_PRESS
+```
+
+### Variables internas
+
+| Variable | Tipo | Función |
+|----------|------|---------|
+| `pin` | `uint8_t` | GPIO del botón |
+| `lastState` | `bool` | Estado anterior del pin |
+| `currentState` | `bool` | Estado actual del pin |
+| `pressStart` | `unsigned long` | Momento en que se presionó |
+| `lastDebounce` | `unsigned long` | Último cambio de estado |
+| `longPressTriggered` | `bool` | Evita disparar long press más de una vez |
+
+---
+
+## 📡 WiFiManager
+
+### Archivo: `WiFiManager.h`
+
+Gestiona la conexión WiFi en dos modos:
+
+| Modo | Cuándo | Qué hace |
+|------|--------|----------|
+| **STA** | Hay credenciales en EEPROM | Se conecta a la red guardada |
+| **AP** | No hay credenciales o fallo | Crea red `ESP-HOTSPOT` con portal de configuración |
+
+### Métodos principales
+
+| Método | Descripción |
+|--------|-------------|
+| `connect()` | Intenta conexión STA con credenciales guardadas |
+| `startAP()` | Crea Access Point para configuración |
+| `isConnected()` | Retorna `true` si está conectado a WiFi |
+| `getIP()` | Retorna la IP actual (STA o AP) |
+
+---
+
+## 💾 AppConfig
+
+### Archivo: `AppConfig.h`
+
+Lee y escribe configuración persistente en EEPROM.
+
+### Datos almacenados
+
+| Campo | Descripción |
+|-------|-------------|
+| SSID | Nombre de la red WiFi |
+| Password | Contraseña de la red |
+| Server URL | URL del Orion Context Broker |
+
+### Métodos principales
+
+| Método | Descripción |
+|--------|-------------|
+| `begin()` | Inicializa EEPROM y carga configuración |
+| `save()` | Guarda configuración actual en EEPROM |
+| `getSSID()` | Retorna el SSID guardado |
+| `getPassword()` | Retorna la contraseña guardada |
+| `getServerURL()` | Retorna la URL del servidor |
+
+---
+
+## 🔑 TokenManager
+
+### Archivo: `TokenManager.h`
+
+Gestiona tokens de autenticación para las peticiones HTTP al servidor.
+
+### Métodos principales
+
+| Método | Descripción |
+|--------|-------------|
+| `getToken()` | Obtiene o renueva el token de autenticación |
+| `isValid()` | Verifica si el token actual es válido |
+
+---
+
+## 🌐 DevWebOTA
+
+### Archivo: `DevWebOTA.h`
+
+Servidor web que se levanta en modo desarrollador. Permite ver información del dispositivo y actualizar el firmware por OTA.
+
+### Métodos principales
+
+| Método | Descripción |
+|--------|-------------|
+| `begin()` | Inicia el servidor web y configura rutas |
+| `handle()` | Procesa peticiones HTTP (llamar en cada `execute()`) |
+
+### Ciclo de vida
+
+```
+EstadoDESARROLLADOR::execute()
+│
+├─ primera_vez == true
+│   ├─ devWeb = new DevWebOTA(&server)
+│   ├─ devWeb->begin()
+│   └─ primera_vez = false
+│
+├─ devWeb->handle()  ← Cada ciclo
+│
+└─ Al salir (onExit)
+    ├─ delete devWeb
+    └─ devWeb = nullptr
+```
+
+---
+
+## 🔄 Flujo del Programa (TARS.ino)
+
+### `setup()`
+
+```
+1. Serial.begin(115200)
+2. Wire.begin(21, 22)           → Inicializa I2C
+3. Inicializar sensores          → HDC1080, B-LUX, ADC
+4. Inicializar OLED              → SSD1306
+5. buttonHandler.begin()         → Configura GPIO como INPUT_PULLUP
+6. appConfig.begin()             → Carga configuración de EEPROM
+7. stateMachine.begin(INICIO)    → Arranca la máquina de estados
+```
+
+### `loop()`
+
+```
+loop() se ejecuta en cada ciclo
+│
+├─ 1. buttonHandler.update()        → Revisa botón
+│      │
+│      ├─ SHORT_PRESS
+│      │   ├─ Actualizar ultima_interaccion
+│      │   ├─ Pantalla apagada? → encender
+│      │   └─ Pantalla encendida? → screenMode++ (0→1→2→3→0)
+│      │   └─ needsUpdate = true
+│      │
+│      ├─ LONG_PRESS
+│      │   └─ flags.dev = !flags.dev  (toggle)
+│      │
+│      └─ NONE → nada
+│
+└─ 2. stateMachine.update()         → Ejecuta estado actual
+       └─ currentState->execute()
+           └─ El estado lee flags y reacciona
+```
+
+### Funciones globales en TARS.ino
+
+Funciones que los estados llaman vía `extern`:
+
+| Función | Qué hace |
+|---------|----------|
+| `readSensors()` | Lee HDC1080 (temp, hum), B-LUX (lux), ADC (ruido). Aplica calibración y filtro |
+| `updateDisplay()` | Dibuja en OLED según `screenMode` |
+| `displayStateInfo(estado)` | Dibuja header con nombre del estado |
+| `displayDeveloperInfo()` | Pantalla del modo desarrollador (IP, sensores) |
+| `construirPayload(t, h, l, r)` | Retorna `String` con JSON para HTTP POST |
+
+### Calibración de sensores en `readSensors()`
+
+| Sensor | Ajuste | Valor por defecto |
+|--------|--------|-------------------|
+| Temperatura | Offset | -3.0 °C |
+| Humedad | Offset | +7.0 % |
+| Lux | Lineal | `(raw - 6.1551) / 1.3788` |
+| Lux | Filtro | Historial de 15 muestras, descarta valores negativos y extremos (>300000) |
+| Ruido | Conversión | `ADC * (3.7 / 4096) * 50.0` → dBA |
 
 ---
 
 ## 📊 Diagrama de Clases
 
-### Esquema de la Arquitectura
-
 ```
-┌──────────────────────────────────────────────────┐
-│              <<abstract>>                        │
-│                 State                            │
-├──────────────────────────────────────────────────┤
-│ # statemachine: StateMachine*                    │
-├──────────────────────────────────────────────────┤
-│ + setStateMachine(StateMachine*): void           │
-│ + onEnter(): void                                │
-│ + execute(): void                                │
-│ + onExit(): void                                 │
-│ + getName(): const char*                         │
-└──────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                  <<abstract>>                         │
+│                     State                             │
+├───────────────────────────────────────────────────────┤
+│ # statemachine: StateMachine*                         │
+├───────────────────────────────────────────────────────┤
+│ + setStateMachine(StateMachine*): void                │
+│ + onEnter(): void        {virtual}                    │
+│ + execute(): void        {virtual}                    │
+│ + onExit(): void         {virtual}                    │
+│ + getName(): const char* {virtual}                    │
+└────────────────────────────��──────────────────────────┘
                         △
-                        │
                         │ hereda
-        ┌───────────────┼───────────────┬──────────────┐
-        │               │               │              │
-┌───────▼──────┐ ┌──────▼──────┐ ┌─────▼──────┐ ┌────▼──────────┐
-│EstadoINICIO  │ │EstadoLECTURA│ │EstadoENVIO │ │EstadoDESARRO- │
-│              │ │             │ │            │ │  LLADOR       │
-├──────────────┤ ├─────────────┤ ├────────────┤ ├───────────────┤
-│-firstRun:bool│ │             │ │-ServerName │ │-primera_vez   │
-├──────────────┤ ├─────────────┤ ├────────────┤ ├───────────────┤
-│+onEnter()    │ │+onEnter()   │ │+onEnter()  │ │+onEnter()     │
-│+execute()    │ │+execute()   │ │+execute()  │ │+execute()     │
-│+onExit()     │ │+onExit()    │ │+onExit()   │ │+onExit()      │
-│+getName()    │ │+getName()   │ │+getName()  │ │+getName()     │
-└──────────────┘ └─────────────┘ └────────────┘ └───────────────┘
+        ┌───────────────┼───────────────┬───────────────┐
+        │               │               │               │
+┌───────▼──────┐ ┌──────▼──────┐ ┌─────▼──────┐ ┌──────▼─────────┐
+│EstadoINICIO  │ │EstadoLECTURA│ │EstadoENVIO │ │EstadoDESARRO-  │
+├──────────────┤ ├─────────────┤ ├────────────┤ │  LLADOR        │
+│-firstRun     │ │             │ │-ServerName │ ├────────────────┤
+├──────────────┤ ├─────────────┤ ├────────────┤ │-primera_vez    │
+│+onEnter()    │ │+onEnter()   │ │+onEnter()  │ │-devWeb*        │
+│+execute()    │ │+execute()   │ │+execute()  │ ├────────────────┤
+│+onExit()     �� │+onExit()    │ │+onExit()   │ │+onEnter()      │
+│+getName()    │ │+getName()   │ │+getName()  │ │+execute()      │
+└──────────────┘ └─────────────┘ └────────────┘ │+onExit()       │
+                                                │+getName()      │
+                                                └────────────────┘
 
-┌──────────────────────────────────────────────────┐
-│              StateMachine                        │
-├──────────────────────────────────────────────────┤
-│ - currentState: State*                           │
-│ - previousState: State*                          │
-│ + flags: Flags                                   │
-│ + clocks: Clocks                                 │
-│ + sensors: SensorData                            │
-│ + settings: Config                               │
-│ + screenMode: int                                │
-│ + isDisplayOn: bool                              │
-│ + needsUpdate: bool                              │
-├──────────────────────────────────────────────────┤
-│ + StateMachine()                                 │
-│ + ~StateMachine()                                │
-│ + begin(State*): void                            │
-│ + update(): void                                 │
-│ + ChangeState(State*): void                      │
-│ + setSettings(ulong, ulong): void                │
-│ + getCurrentState(): State*                      │
-│ + getCurrentStateName(): const char*             │
-└──────────────────────────────────────────────────┘
-         │
-         │ usa
-         ↓
-┌──────────────────────────────────────────────────┐
-│              Estructuras de Datos                │
-├──────────────────────────────────────────────────┤
-│ Flags         { inicio, lectura, envio, dev }    │
-│ Clocks        { tiempo_actual, proximo_envio }   │
-│ SensorData    { temp, hum, lux, dbValue }        │
-│ Config        { INTERVALO_LECTURA, ENVIO }       │
-└──────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                  StateMachine                         │
+├───────────────────────────────────────────────────────┤
+│ - currentState: State*                                │
+│ - previousState: State*                               │
+│ + flags: Flags                                        │
+│ + clocks: Clocks                                      │
+│ + sensors: SensorData                                 │
+│ + settings: Config                                    │
+│ + screenMode: int                                     │
+│ + isDisplayOn: bool                                   │
+│ + needsUpdate: bool                                   │
+├───────────────────────────────────────────────────────┤
+│ + begin(State*): void                                 │
+│ + update(): void                                      │
+│ + ChangeState(State*): void                           │
+│ + getCurrentStateName(): const char*                  │
+└─────────��─────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────┐
+│                  ButtonHandler                        │
+├───────────────────────────────────────────────────────┤
+│ - pin: uint8_t                                        │
+│ - lastState / currentState: bool                      │
+│ - pressStart / lastDebounce: unsigned long            │
+│ - longPressTriggered: bool                            │
+├───────────────────────────────────────────────────────┤
+│ + enum Event { NONE, SHORT_PRESS, LONG_PRESS }        │
+│ + ButtonHandler(uint8_t pin)                          │
+│ + begin(): void                                       │
+│ + update(): Event                                     │
+└───────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────┐
+│              Estructuras de Datos                     │
+├───────────────────────────────────────────────────────┤
+│ Flags      { inicio, lectura, envio, dev }            │
+│ Clocks     { tiempo_actual, tiempo_lectura,           │
+│              ultima_interaccion, proximo_envio }       │
+│ SensorData { temp, hum, lux, voltage, dbValue }       │
+│ Config     { TIEMPO_INACTIVIDAD }                     │
+└───────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📖 Guía de Uso
+## 🧪 Pruebas sin Hardware
 
-### Iniciar el Sistema
+### Sin sensores conectados
 
-1. **Alimenta el ESP32** mediante USB o fuente externa (5V)
-2. La pantalla OLED mostrará:
-   ```
-   Estado: INICIO
-   Iniciando...
-   ```
-3. Tras ~100ms pasará automáticamente a:
-   ```
-   Estado: LECTURA
-   Temp: 24.5 C
-   Hum: 60.2 %
-   Lux: 450.0 lux
-   Ruido: 45.3 dBA
-   ```
+Simular valores para evitar crash por I2C:
 
-### Cambiar Modo de Pantalla
+```cpp
+void readSensors() {
+  stateMachine.sensors.temp = 25.0;
+  stateMachine.sensors.hum = 50.0;
+  stateMachine.sensors.lux = 100.0;
+  stateMachine.sensors.voltage = 1.5;
+  stateMachine.sensors.dbValue = 45.0;
+  Serial.println("[TEST] Sensores simulados");
+}
+```
 
-Presiona el **botón de pantalla** (GPIO 27) para alternar entre 4 modos:
+### Sin botón físico
 
-1. **Modo 0 - Todos los Sensores**
-2. **Modo 1 - Temperatura y Humedad**
-3. **Modo 2 - Luz**
-4. **Modo 3 - Ruido**
+Usar el botón BOOT del ESP32:
 
-### Entrar a Modo Desarrollador
+```cpp
+#define BUTTON_PIN 0  // GPIO0 = botón BOOT
+```
 
-1. **Mantén presionado** el botón de desarrollador (GPIO 26)
-2. En tu navegador, ve a la IP mostrada en pantalla
-3. Para salir: Suelta el botón de desarrollador (sigue en desarrollo -- puede cambiar)
+> ⚠️ No mantener presionado BOOT al resetear (entra en modo descarga).
+
+### Forzar modo desarrollador sin botón
+
+```cpp
+// En setup(), después de stateMachine.begin():
+stateMachine.flags.dev = true;
+```
+
+---
+
+## 📝 Mejoras Pendientes
+
+| Mejora | Prioridad | Descripción |
+|--------|-----------|-------------|
+| Adelgazar `TARS.ino` | Baja | Extraer funciones a clases: `SensorReader.h`, `DisplayManager.h`, `PayloadBuilder.h` |
+| Protección I2C | Media | Verificar conexión de sensores antes de leer para evitar crash del core |
+| Persistencia de calibración | Baja | Guardar offsets de calibración en EEPROM en vez de hardcodeados |
 
 ---
