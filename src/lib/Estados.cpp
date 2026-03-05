@@ -150,7 +150,7 @@ void EstadoENVIO::execute() {
   HTTPClient http;
   http.begin(appConfig.serverUrl);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("X-Auth-Token", tokenManager.getToken());
+  http.addHeader("Authorization", "Bearer " + tokenManager.getToken());
 
   String payload = construirPayload(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
   Serial.println("[ENVIO] Payload JSON:");
@@ -163,12 +163,31 @@ void EstadoENVIO::execute() {
   } else if (httpResponseCode == 401) {
     Serial.println("✗ Token rechazado (401), forzando renovación");
     tokenManager.clear();
+    http.end();
+
+    if (tokenManager.ensureValidToken()) {
+      HTTPClient retryhttp;
+      retryhttp.begin(appConfig.serverUrl);
+      retryhttp.addHeader("Content-Type", "application/json");
+      retryhttp.addHeader("Authorization", "Bearer " + tokenManager.getToken());
+
+      int retrycode = retryhttp.PATCH(payload);
+      if (retrycode >= 200 && retrycode < 300) {
+        Serial.printf("✓ Reintento exitoso, código: %d\n", retrycode);
+      } else {
+        Serial.printf("✗ Reintento fallido, código: %d\n", retrycode);
+      }
+      retryhttp.end();
+    }
+    statemachine->clocks.proximo_envio = now + appConfig.intervaloEnvio;
+    statemachine->flags.envio_programado = true;
+    statemachine->ChangeState(new EstadoLECTURA());
+
   } else {
     Serial.printf("✗ Error en envío: %s\n", http.errorToString(httpResponseCode).c_str());
   }
 
   http.end();
-
   statemachine->clocks.proximo_envio = now + appConfig.intervaloEnvio;
   statemachine->flags.envio_programado = true;
   statemachine->ChangeState(new EstadoLECTURA());
