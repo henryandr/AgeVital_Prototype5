@@ -79,6 +79,20 @@ Configura WiFi, parametros del sistema o actualiza el firmware
 </div>
 
 <div class="card">
+<h2>🤖 Agente Flask</h2>
+<form action="/agent" method="POST">
+<label>URL del Agente</label>
+<input type="text" name="agentUrl" placeholder="http://servidor:5000/v1/agent/tars1">
+<label>Activar envío al agente</label>
+<select name="useAgent" style="width:100%;padding:12px;margin:5px 0;border:1px solid #ddd;border-radius:5px;box-sizing:border-box">
+  <option value="0">Desactivado</option>
+  <option value="1">Activado</option>
+</select>
+<button type="submit">💾 Guardar Agente</button>
+</form>
+</div>
+
+<div class="card">
 <h2>⚠️ Restaurar Valores a Quemados</h2>
 <p style="color:#666;font-size:14px">Esto restaurara <strong>toda</strong> la configuracion a valores por defecto: WiFi, configuracion del sistema y credenciales de Keyrock.</p>
 <form action="/config/reset" method="POST">
@@ -232,6 +246,29 @@ void DevWebOTA::begin() {
                  "<body style='font-family:Arial;text-align:center;padding:50px;background:#f0f0f0'>"
                  "<div style='background:white;padding:40px;border-radius:10px'>"
                  "<h1 style='color:#4CAF50'>Credenciales Keyrock Guardadas</h1>"
+                 "<p>Volviendo al panel...</p>"
+                 "</div></body></html>");
+  });
+
+  // ===== Ruta Agente  =====
+  server->on("/agent", HTTP_POST, [this]() {
+    String newAgentUrl = server->arg("agentUrl");
+    String newUseAgent = server->arg("useAgent");
+
+    if (newAgentUrl.length() > 0) appConfig.agentUrl = newAgentUrl;
+    appConfig.useAgent = (newUseAgent == "1");
+
+    appConfig.save();
+
+    Serial.printf("[Agente] agentUrl: %s\n", appConfig.agentUrl.c_str());
+    Serial.printf("[Agente] useAgent: %s\n", appConfig.useAgent ? "true" : "false");
+
+    server->send(200, "text/html",
+                 "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+                 "<meta http-equiv='refresh' content='2;url=/'></head>"
+                 "<body style='font-family:Arial;text-align:center;padding:50px;background:#f0f0f0'>"
+                 "<div style='background:white;padding:40px;border-radius:10px'>"
+                 "<h1 style='color:#4CAF50'>Agente Flask Guardado</h1>"
                  "<p>Volviendo al panel...</p>"
                  "</div></body></html>");
   });

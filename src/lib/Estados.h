@@ -20,6 +20,7 @@ extern void displayDeveloperInfo();
 extern Adafruit_SSD1306 display;
 extern WebServer server;
 extern String construirPayload(float temperatura, float humedad, float luz, float ruido);
+extern String construirPayloadAgente(float temperatura, float humedad, float luz, float ruido);
 
 // ========================================
 // ESTADO INICIO

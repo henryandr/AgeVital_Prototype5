@@ -22,6 +22,10 @@ class AppConfig {
   String keyrockUser = "Tarst_v1@gmail.com";
   String keyrockPass = "123";
 
+  // ===== CONFIGURACION AGENTE =====
+  String agentUrl = "http://10.38.35.216:5000/v1/agent/tars1";
+  bool useAgent = false;
+
   void begin() {
     prefs.begin("appconfig", false);
     serverUrl = prefs.getString("serverUrl", serverUrl.c_str());
@@ -34,6 +38,9 @@ class AppConfig {
     clientSecret = prefs.getString("clientSecret", clientSecret.c_str());
     keyrockUser = prefs.getString("keyrockUser", keyrockUser.c_str());
     keyrockPass = prefs.getString("keyrockPass", keyrockPass.c_str());
+
+    agentUrl = prefs.getString("agentUrl", agentUrl.c_str());
+    useAgent = prefs.getBool("useAgent", useAgent);
     prefs.end();
 
     Serial.println("[AppConfig] Configuracion cargada:");
@@ -44,6 +51,8 @@ class AppConfig {
     Serial.printf("tokenUrl: %s\n", tokenUrl.c_str());
     Serial.printf("clientId: %s\n", clientId.c_str());
     Serial.printf("keyrockUser: %s\n", keyrockUser.c_str());
+    Serial.printf("agentUrl: %s\n", agentUrl.c_str());
+    Serial.printf("useAgent: %s\n", useAgent ? "true" : "false");
   }
 
   void save() {
@@ -58,6 +67,9 @@ class AppConfig {
     prefs.putString("clientSecret", clientSecret.c_str());
     prefs.putString("keyrockUser", keyrockUser.c_str());
     prefs.putString("keyrockPass", keyrockPass.c_str());
+
+    prefs.putString("agentUrl", agentUrl.c_str());
+    prefs.putBool("useAgent", useAgent);
     prefs.end();
     Serial.println("[AppConfig] Configuracion guardada en NVS");
   }
@@ -76,6 +88,9 @@ class AppConfig {
     clientSecret = "f8e1bbf2-cbe9-44fb-a500-5bc6d60d17c7";
     keyrockUser = "Tarst_v1@gmail.com";
     keyrockPass = "123";
+
+    agentUrl = "http://10.38.35.216:5000/v1/agent/tars1";
+    useAgent = false;
     Serial.println("[AppConfig] Configuracion restaurada a defaults");
   }
 };

@@ -137,6 +137,34 @@ void EstadoENVIO::execute() {
     return;
   }
 
+  if (appConfig.useAgent) {
+    Serial.println("[ENVIO] Modo agente activo, enviando sin token...");
+
+    HTTPClient httpAgent;
+    httpAgent.begin(appConfig.agentUrl);
+    httpAgent.addHeader("Content-Type", "application/json");
+
+    String agentPayload = construirPayloadAgente(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
+
+    Serial.println("[AGENTE] Payload:");
+    Serial.println(agentPayload);
+
+    int agentCode = httpAgent.POST(agentPayload);
+
+    if (agentCode >= 200 && agentCode < 300) {
+      Serial.printf("✓ Envío al agente exitoso, código: %d\n", agentCode);
+    } else {
+      Serial.printf("✗ Error al enviar al agente, código: %d\n", agentCode);
+    }
+
+    httpAgent.end();
+
+    statemachine->clocks.proximo_envio = now + appConfig.intervaloEnvio;
+    statemachine->flags.envio_programado = true;
+    statemachine->ChangeState(new EstadoLECTURA());
+    return;
+  }
+
   // Preguntamos por el token antes de intentar enviar, si no es valido o no se puede renovar, se pospone envio
   if (!tokenManager.ensureValidToken()) {
     Serial.println("[ENVIO] No se pudo obtener token, posponiendo envío");
