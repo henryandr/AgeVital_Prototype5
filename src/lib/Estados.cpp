@@ -144,7 +144,7 @@ void EstadoENVIO::execute() {
     httpAgent.begin(appConfig.agentUrl);
     httpAgent.addHeader("Content-Type", "application/json");
 
-    String agentPayload = construirPayloadAgente(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
+    String agentPayload = construirPayload(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
 
     Serial.println("[AGENTE] Payload:");
     Serial.println(agentPayload);
