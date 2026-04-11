@@ -11,6 +11,7 @@ class AppConfig {
  public:
   // ===== CONFIGURACION DE ENVIO DE DATOS (ORION) =====
   String serverUrl = "http://10.38.35.216:1026/v2/entities/tarsdev/attrs";
+  String hostname = "tars-0g";  // Tars enesimo. Se debe configurar el hostname desde desarrollador
   unsigned long intervaloEnvio = 15000;
   unsigned long intervaloLectura = 2000;
   unsigned long intervaloReintento = 20000;
@@ -31,6 +32,7 @@ class AppConfig {
   void begin() {
     prefs.begin("appconfig", false);
     serverUrl = prefs.getString("serverUrl", serverUrl.c_str());
+    hostname = prefs.getString("hostname", hostname.c_str());
     intervaloEnvio = prefs.getULong("intervaloEnvio", intervaloEnvio);
     intervaloLectura = prefs.getULong("intervaloLectura", intervaloLectura);
     intervaloReintento = prefs.getULong("intervaloReintento", intervaloReintento);
@@ -63,6 +65,7 @@ class AppConfig {
   void save() {
     prefs.begin("appconfig", false);
     prefs.putString("serverUrl", serverUrl.c_str());
+    prefs.putString("hostname", hostname.c_str());
     prefs.putULong("intervaloEnvio", intervaloEnvio);
     prefs.putULong("intervaloLectura", intervaloLectura);
     prefs.putULong("intervaloReintento", intervaloReintento);
@@ -86,6 +89,7 @@ class AppConfig {
     prefs.clear();
     prefs.end();
     serverUrl = "http://10.38.35.216:1026/v2/entities/tarsdev/attrs";
+    hostname = "tars-0g";  // Lo mejor es configurar el hostname por defecto para cada tars antes de quemarlo porque esas seran sus config por default
     intervaloEnvio = 15000;
     intervaloLectura = 2000;
     intervaloReintento = 20000;

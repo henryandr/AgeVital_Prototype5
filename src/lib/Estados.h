@@ -2,6 +2,7 @@
 #define ESTADOS_H
 
 #include <Adafruit_SSD1306.h>
+#include <ESPmDNS.h>
 #include <HTTPClient.h>
 #include <WebServer.h>
 #include <WiFi.h>

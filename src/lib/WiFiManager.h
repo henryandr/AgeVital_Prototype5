@@ -14,7 +14,7 @@ class WiFiManager {
   const char* defaultPass = "16652524";
 
   // Access Point
-  const char* apSSID = "ESP-HOTSPOT";
+  const char* apSSID = "ESP-HOTSPOT-TARS1";
   const char* apPass = "12345678";
 
  public:

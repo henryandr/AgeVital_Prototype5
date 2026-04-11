@@ -34,6 +34,8 @@ void EstadoINICIO::execute() {
   // Si esta en la zona donde se puede conectar a WiFi, intenta conectarse
   if (wifiManager.connect(30)) {
     Serial.println("[INICIO] WiFi listo para envío de datos");
+    MDNS.begin(appConfig.hostname.c_str());
+    Serial.printf("[mDNS] Activo en http://%s.local\n", appConfig.hostname.c_str());
   } else {
     Serial.println("[INICIO] Sin WiFi, autoReconnect activo");
   }
@@ -258,6 +260,8 @@ void EstadoDESARROLLADOR::onEnter() {
   display.clearDisplay();
   displayStateInfo("DESARROLLADOR");
   display.display();
+
+  if (wifiManager.isConnected()) MDNS.begin(appConfig.hostname.c_str());
 }
 
 void EstadoDESARROLLADOR::execute() {

@@ -51,6 +51,8 @@ Configura WiFi, parametros del sistema o actualiza el firmware
 <form action="/config" method="POST">
 <label>URL del Servidor</label>
 <input type="text" name="serverUrl" placeholder="http://servidor/ruta">
+<label>Hostname (nombre en red local)</label>
+<input type="text" name="hostname" placeholder="tars-n (usa un hostname unico para cada tars)" >
 <label>Intervalo de Envio (ms)</label>
 <input type="number" name="intervaloEnvio" placeholder="15000" min="10000">
 <label>Intervalo de Lectura (ms)</label>
@@ -178,12 +180,14 @@ void DevWebOTA::begin() {
 
   server->on("/config", HTTP_POST, [this]() {
     String newUrl = server->arg("serverUrl");
+    String newHostname = server->arg("hostname");
     String newEnvio = server->arg("intervaloEnvio");
     String newLectura = server->arg("intervaloLectura");
     String newReintento = server->arg("intervaloReintento");
     String newInactividad = server->arg("tiempoInactividad");
 
     if (newUrl.length() > 0) appConfig.serverUrl = newUrl;
+    if (newHostname.length() > 0) appConfig.hostname = newHostname;
     if (newEnvio.length() > 0) appConfig.intervaloEnvio = newEnvio.toInt();
     if (newLectura.length() > 0) appConfig.intervaloLectura = newLectura.toInt();
     if (newReintento.length() > 0) appConfig.intervaloReintento = newReintento.toInt();
@@ -196,6 +200,7 @@ void DevWebOTA::begin() {
     Serial.printf("[Config] intervaloLectura: %lu\n", appConfig.intervaloLectura);
     Serial.printf("[Config] intervaloReintento: %lu\n", appConfig.intervaloReintento);
     Serial.printf("[Config] tiempoInactividad: %lu\n", appConfig.tiempoInactividad);
+    Serial.printf("[Config] hostname: %s\n", appConfig.hostname.c_str());
 
     server->send(200, "text/html",
                  "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
