@@ -14,7 +14,7 @@ class AppConfig {
   unsigned long intervaloEnvio = 15000;
   unsigned long intervaloLectura = 2000;
   unsigned long intervaloReintento = 20000;
-  unsigned long tiempoInactividad = 10000;
+  unsigned long tiempoInactividad = 180000;
 
   // ===== CREDENCIALES KEYROCK // SE ESTAN DEJANDO ESTOS PARAMETROS COMO EL DEFAULT=====
   String tokenUrl = "http://10.38.35.216:3001/oauth2/token";
@@ -89,7 +89,7 @@ class AppConfig {
     intervaloEnvio = 15000;
     intervaloLectura = 2000;
     intervaloReintento = 20000;
-    tiempoInactividad = 10000;
+    tiempoInactividad = 180000;
 
     tokenUrl = "http://10.38.35.216:3001/oauth2/token";
     clientId = "d4eac061-b057-45ff-87b2-f317275c3f58";
