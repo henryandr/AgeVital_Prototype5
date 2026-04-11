@@ -27,12 +27,8 @@ void drawAllSensors() {
 
   display.setCursor(0, 41);
   display.print("Lux:       ");
-  if (stateMachine.sensors.lux < 0) {
-    display.println("Error");
-  } else {
-    display.print(stateMachine.sensors.lux, 1);
-    display.println(" lux");
-  }
+  display.print(stateMachine.sensors.lux, 1);
+  display.println(" lux");
 
   display.setCursor(0, 51);
   display.print("Ruido:     ");
@@ -73,12 +69,8 @@ void updateDisplay() {
       display.setCursor(0, 17);
       display.println("LUZ:");
       display.setTextSize(2);
-      if (stateMachine.sensors.lux < 0) {
-        display.println("Error");
-      } else {
-        display.print(stateMachine.sensors.lux, 1);
-        display.println(" lux");
-      }
+      display.print(stateMachine.sensors.lux, 1);
+      display.println(" lux");
       break;
 
     case 3:

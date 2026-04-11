@@ -51,6 +51,7 @@ void SensorManager::read() {
     Serial.println(") — usando último valor válido");
   } else {
     float calibratedLux = (rawLux - LUX_CALIBRATION_OFFSET) / LUX_CALIBRATION_SLOPE;
+    if (calibratedLux < 0) calibratedLux = 0.0f;
     stateMachine.sensors.lux = calibratedLux;
     luxHistory[luxHistoryIndex] = calibratedLux;
     luxHistoryIndex = (luxHistoryIndex + 1) % LUX_HISTORY_SIZE;
