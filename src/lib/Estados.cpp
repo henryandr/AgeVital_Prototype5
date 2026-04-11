@@ -1,5 +1,7 @@
 #include "Estados.h"
 
+#include <WiFiClientSecure.h>
+
 #include "AppConfig.h"
 #include "DevWebOTA.h"
 #include "TokenManager.h"
@@ -180,8 +182,10 @@ void EstadoENVIO::execute() {
   }
 
   Serial.println("Estado: ENVIO");
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
-  http.begin(appConfig.serverUrl);
+  http.begin(client, appConfig.serverUrl);
   http.addHeader("Content-Type", "application/json");
   if (!appConfig.skipToken) {
     http.addHeader("Authorization", "Bearer " + tokenManager.getToken());
@@ -204,8 +208,10 @@ void EstadoENVIO::execute() {
     http.end();
 
     if (tokenManager.ensureValidToken()) {
+      WiFiClientSecure retryClient;
+      retryClient.setInsecure();
       HTTPClient retryhttp;
-      retryhttp.begin(appConfig.serverUrl);
+      retryhttp.begin(retryClient, appConfig.serverUrl);
       retryhttp.addHeader("Content-Type", "application/json");
       retryhttp.addHeader("Authorization", "Bearer " + tokenManager.getToken());
 
