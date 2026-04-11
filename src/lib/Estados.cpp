@@ -171,7 +171,7 @@ void EstadoENVIO::execute() {
   }
 
   // Preguntamos por el token antes de intentar enviar, si no es valido o no se puede renovar, se pospone envio
-  if (!tokenManager.ensureValidToken()) {
+  if (!appConfig.skipToken && !tokenManager.ensureValidToken()) {
     Serial.println("[ENVIO] No se pudo obtener token, posponiendo envío");
     statemachine->clocks.proximo_envio = now + appConfig.intervaloReintento;
     statemachine->flags.envio_programado = true;
@@ -183,7 +183,9 @@ void EstadoENVIO::execute() {
   HTTPClient http;
   http.begin(appConfig.serverUrl);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", "Bearer " + tokenManager.getToken());
+  if (!appConfig.skipToken) {
+    http.addHeader("Authorization", "Bearer " + tokenManager.getToken());
+  }
 
   SensorData avg = sensorManager.getAverages();
   sensorManager.resetAccumulator();

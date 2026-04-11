@@ -22,6 +22,7 @@ class AppConfig {
   String clientSecret = "f8e1bbf2-cbe9-44fb-a500-5bc6d60d17c7";
   String keyrockUser = "Tarst_v1@gmail.com";
   String keyrockPass = "123";
+  bool skipToken = false;  // Para desarrollo, permite saltar la obtención de token y enviar sin autenticación (solo si el backend lo permite)
 
   // ===== CONFIGURACION AGENTE =====
   String agentUrl = "http://10.38.35.216:5000/v1/agent/tars1";
@@ -40,6 +41,7 @@ class AppConfig {
     clientSecret = prefs.getString("clientSecret", clientSecret.c_str());
     keyrockUser = prefs.getString("keyrockUser", keyrockUser.c_str());
     keyrockPass = prefs.getString("keyrockPass", keyrockPass.c_str());
+    skipToken = prefs.getBool("skipToken", skipToken);
 
     agentUrl = prefs.getString("agentUrl", agentUrl.c_str());
     useAgent = prefs.getBool("useAgent", useAgent);
@@ -55,6 +57,7 @@ class AppConfig {
     Serial.printf("keyrockUser: %s\n", keyrockUser.c_str());
     Serial.printf("agentUrl: %s\n", agentUrl.c_str());
     Serial.printf("useAgent: %s\n", useAgent ? "true" : "false");
+    Serial.printf("skipToken: %s\n", skipToken ? "true" : "false");
   }
 
   void save() {
@@ -70,6 +73,7 @@ class AppConfig {
     prefs.putString("clientSecret", clientSecret.c_str());
     prefs.putString("keyrockUser", keyrockUser.c_str());
     prefs.putString("keyrockPass", keyrockPass.c_str());
+    prefs.putBool("skipToken", skipToken);
 
     prefs.putString("agentUrl", agentUrl.c_str());
     prefs.putBool("useAgent", useAgent);
@@ -92,6 +96,7 @@ class AppConfig {
     clientSecret = "f8e1bbf2-cbe9-44fb-a500-5bc6d60d17c7";
     keyrockUser = "Tarst_v1@gmail.com";
     keyrockPass = "123";
+    skipToken = false;
 
     agentUrl = "http://10.38.35.216:5000/v1/agent/tars1";
     useAgent = false;

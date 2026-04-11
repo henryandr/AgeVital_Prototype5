@@ -76,6 +76,11 @@ Configura WiFi, parametros del sistema o actualiza el firmware
 <input type="text" name="keyrockUser" placeholder="usuario@email.com">
 <label>Password Keyrock</label>
 <input type="password" name="keyrockPass" placeholder="password">
+<label>Saltar validación de token (pruebas)</label>
+<select name="skipToken" style="width:100%;padding:12px;margin:5px 0;border:1px solid #ddd;border-radius:5px;box-sizing:border-box">
+  <option value="0">Desactivado</option>
+  <option value="1">Activado</option>
+</select>
 <button type="submit">💾 Guardar Credenciales</button>
 </form>
 </div>
@@ -231,12 +236,14 @@ void DevWebOTA::begin() {
     String newClientSecret = server->arg("clientSecret");
     String newKeyrockUser = server->arg("keyrockUser");
     String newKeyrockPass = server->arg("keyrockPass");
+    String newSkipToken = server->arg("skipToken");
 
     if (newTokenUrl.length() > 0) appConfig.tokenUrl = newTokenUrl;
     if (newClientId.length() > 0) appConfig.clientId = newClientId;
     if (newClientSecret.length() > 0) appConfig.clientSecret = newClientSecret;
     if (newKeyrockUser.length() > 0) appConfig.keyrockUser = newKeyrockUser;
     if (newKeyrockPass.length() > 0) appConfig.keyrockPass = newKeyrockPass;
+    appConfig.skipToken = (newSkipToken == "1");
 
     appConfig.save();
     tokenManager.clear();
