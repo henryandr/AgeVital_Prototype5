@@ -11,30 +11,21 @@
 #include "AppConfig.h"
 #include "ButtonHandler.h"
 #include "ClosedCube_HDC1080.h"
+#include "DisplayManager.h"
 #include "Estados.h"
+#include "PayloadBuilder.h"
+#include "SensorManager.h"
 #include "State.h"
 #include "StateMachine.h"
 #include "TokenManager.h"
 #include "WiFiManager.h"
 
-// --- Definiciones de hardware ---
+// ===== HARDWARE =====
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-#define SoundSensorPin 35
-#define VREF 3.7
 #define BUTTON_PIN 27
 
-// --- Factores de calibración ---
-const float NOISE_CALIBRATION_SLOPE = 1.618;
-const float NOISE_CALIBRATION_OFFSET = 14.282;
-const float TEMP_OFFSET = -3;
-const float HUM_OFFSET = 7.0;
-const float LUX_CALIBRATION_FACTOR = 0.613;
-// Constantes de calibración del sensor de Lux (basadas en mediciones reales realizadas)
-const float LUX_CALIBRATION_OFFSET = 6.1551;
-const float LUX_CALIBRATION_SLOPE = 1.3788;
-
-// --- Objetos ---
+// ===== OBJETOS GLOBALES =====
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 ClosedCube_HDC1080 hdc1080;
 DFRobot_B_LUX_V30B luxSensor(&Wire, 5);
@@ -43,47 +34,40 @@ AppConfig appConfig;
 WiFiManager wifiManager;
 TokenManager tokenManager;
 ButtonHandler buttonHandler(BUTTON_PIN);
-// ===== MÁQUINA DE ESTADOS =====
 StateMachine stateMachine;
-
-// --- Variables para filtro de lux ---
-const int LUX_HISTORY_SIZE = 15;
-float luxHistory[LUX_HISTORY_SIZE];
-int luxHistoryIndex = 0;
-bool luxHistoryFull = false;
+SensorManager sensorManager;
 
 void setup() {
   Serial.begin(115200);
   Serial.println("\n=== TARS1 ===");
   Serial.println("Con Máquina de Estados Modular\n");
+
   Wire.begin(21, 22);
 
-  // Inicialización de sensores
+  // Sensores
   hdc1080.begin(0x40);
+  Wire.setClock(50000);
   luxSensor.begin();
   analogReadResolution(12);
 
-  // Configuración de la pantalla
+  // Pantalla
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println("Error OLED");
     while (1);
   }
 
-  // Configuración del botón
+  // Botón
   buttonHandler.begin();
 
-  // Inicializar filtro de lux
-  float initialLux = luxSensor.lightStrengthLux();
-  if (initialLux < 0) initialLux = 0;
-  for (int i = 0; i < LUX_HISTORY_SIZE; i++) {
-    luxHistory[i] = initialLux;
-  }
+  // Configuración desde NVS
+  appConfig.begin();
 
-  appConfig.begin();  // Carga configuracion desde NVS
+  // Inicializar buffer del filtro de lux
+  sensorManager.begin();
 
   stateMachine.flags.dev = false;
 
-  // Iniciamos la maquina de estados
+  // Arrancar máquina de estados
   if (stateMachine.flags.dev) {
     stateMachine.begin(new EstadoDESARROLLADOR());
   } else {
@@ -92,7 +76,6 @@ void setup() {
 }
 
 void loop() {
-  // Manejo del boton
   ButtonHandler::Event event = buttonHandler.update();
 
   if (event == ButtonHandler::SHORT_PRESS) {
@@ -102,9 +85,7 @@ void loop() {
       stateMachine.isDisplayOn = true;
     } else {
       stateMachine.screenMode++;
-      if (stateMachine.screenMode > 3) {
-        stateMachine.screenMode = 0;
-      }
+      if (stateMachine.screenMode > 3) stateMachine.screenMode = 0;
     }
     stateMachine.needsUpdate = true;
     Serial.println("[Button] Short press -> cambiar pantalla");
@@ -120,247 +101,5 @@ void loop() {
     }
   }
 
-  // Actualizamos la máquina de estados
   stateMachine.update();
-}
-
-// Función para leer todos los sensores y guardar los valores en variables globales.
-void readSensors() {
-  stateMachine.sensors.temp = hdc1080.readTemperature() + TEMP_OFFSET;
-  stateMachine.sensors.hum = hdc1080.readHumidity() - HUM_OFFSET;
-  // Agregamos la lux leida sin corregir
-  float rawLux = luxSensor.lightStrengthLux();
-  const float EXTREME_LUX_THRESHOLD = 300000.0;
-
-  if (rawLux < 0 || rawLux > EXTREME_LUX_THRESHOLD) {
-    stateMachine.sensors.lux = luxHistory[(luxHistoryIndex - 1 + LUX_HISTORY_SIZE) % LUX_HISTORY_SIZE];
-    Serial.print("Lectura de lux anómala (");
-    Serial.print(rawLux);
-    Serial.println(") detectada y filtrada.");
-  } else {
-    float calibrateLux = (rawLux - LUX_CALIBRATION_OFFSET) / LUX_CALIBRATION_SLOPE;  // Aplicamos la calibración lineal que hemos determinado
-    stateMachine.sensors.lux = calibrateLux;
-    luxHistory[luxHistoryIndex] = stateMachine.sensors.lux;
-    luxHistoryIndex = (luxHistoryIndex + 1) % LUX_HISTORY_SIZE;
-  }
-
-  int rawADC = analogRead(SoundSensorPin);
-  float voltageValue = rawADC * (VREF / 4096.0);
-  stateMachine.sensors.voltage = voltageValue;
-  float dBRaw = voltageValue * 50.0;
-  stateMachine.sensors.dbValue = dBRaw;
-
-  Serial.print("Temp: ");
-  Serial.print(stateMachine.sensors.temp, 1);
-  Serial.print(" C | Hum: ");
-  Serial.print(stateMachine.sensors.hum, 1);
-  Serial.print(" % | Lux: ");
-  Serial.print(stateMachine.sensors.lux, 1);
-  Serial.print(" | Ruido: ");
-  Serial.print(stateMachine.sensors.dbValue, 1);
-  Serial.println(" dBA");
-}
-
-// Función para dibujar los valores de todos los sensores a la vez.
-void drawAllSensors() {
-  display.setTextSize(0);
-  display.setCursor(15, 17);
-  display.println("Sensores:");
-
-  display.setCursor(0, 23);
-  display.print("Temp:      ");
-  display.print(stateMachine.sensors.temp, 1);
-  display.println(" C");
-
-  display.setCursor(0, 32);
-  display.print("Hum:       ");
-  display.print(stateMachine.sensors.hum, 1);
-  display.println(" %");
-
-  display.setCursor(0, 41);
-  display.print("Lux:       ");
-  if (stateMachine.sensors.lux < 0) {
-    display.println("Error");
-  } else {
-    display.print(stateMachine.sensors.lux, 1);
-    display.println(" lux");
-  }
-
-  display.setCursor(0, 51);
-  display.print("Ruido:     ");
-  display.print(stateMachine.sensors.dbValue, 1);
-  display.println(" dBA");
-}
-
-// Función para dibujar los valores actuales de los sensores en la pantalla.
-void updateDisplay() {
-  if (!stateMachine.isDisplayOn) {
-    return;  // No hace nada si la pantalla está apagada.
-  }
-
-  // Limpiar la pantalla para dibujar el nuevo contenido.
-  display.clearDisplay();
-  display.setTextColor(SSD1306_WHITE);  // El color blanco se traduce en amarillo o azul dependiendo de la zona.
-
-  displayStateInfo("LECTURA");  // Va hasta Y=23
-
-  switch (stateMachine.screenMode) {
-    case 0:  // Ahora el modo 0 es el de todos los sensores.
-      drawAllSensors();
-      break;
-    case 1:  // El modo 1 es ahora para temperatura y humedad.
-      // Título en la zona amarilla, centrado.
-      display.setTextSize(1);
-      display.setCursor(0, 20);
-      display.println("TEMP/HUM:");
-
-      // Valores en la zona azul.
-      display.setTextSize(1.5);
-      display.setCursor(0, 35);
-      display.print(stateMachine.sensors.temp, 1);
-      display.println(" C TEMP");
-
-      display.setTextSize(1.5);
-      display.setCursor(0, 45);
-      display.print(stateMachine.sensors.hum, 1);
-      display.println(" % HUM");
-      break;
-
-    case 2:  // El modo 2 es para luz.
-      // Título en la zona amarilla, centrado.
-      display.setTextSize(1);
-      display.setCursor(0, 17);
-      display.println("LUZ:");
-      display.setTextSize(2);  // Aumentado el tamaño de la fuente.
-      if (stateMachine.sensors.lux < 0) {
-        display.println("Error");
-      } else {
-        display.print(stateMachine.sensors.lux, 1);
-        display.println(" lux");
-      }
-      break;
-
-    case 3:  // El modo 3 es para ruido.
-      // Título en la zona amarilla, centrado.
-      display.setTextSize(1);
-      display.setCursor(0, 17);
-      display.println("RUIDO:");
-
-      // Valor en la zona azul.
-      display.setTextSize(2);    // Aumentado el tamaño de la fuente.
-      display.setCursor(0, 27);  // Ajustada la posición del cursor.
-      display.print(stateMachine.sensors.dbValue, 1);
-      display.println(" dBA");
-      display.setTextSize(1);
-      display.setCursor(0, 50);
-      display.print("V: ");
-      display.print(stateMachine.sensors.voltage, 3);
-      display.println(" V");
-
-      break;
-  }
-
-  display.display();
-}
-
-// Función para construir el JSON con los datos de los sensores
-String construirPayload(float temperatura, float humedad, float luz, float ruido) {
-  JsonDocument doc;
-
-  JsonObject humidity = doc["humidity"].to<JsonObject>();
-  humidity["type"] = "Number";
-  humidity["value"] = serialized(String(humedad, 1));
-
-  JsonObject temperature = doc["temperature"].to<JsonObject>();
-  temperature["type"] = "Number";
-  temperature["value"] = serialized(String(temperatura, 1));
-
-  JsonObject noise = doc["noise"].to<JsonObject>();
-  noise["type"] = "Number";
-  noise["value"] = serialized(String(ruido, 1));
-
-  JsonObject illuminance = doc["illuminance"].to<JsonObject>();
-  illuminance["type"] = "Number";
-  illuminance["value"] = serialized(String(luz, 1));
-
-  String payload;
-  serializeJson(doc, payload);
-  return payload;
-}
-
-String construirPayloadAgente(float temperatura, float humedad, float luz, float ruido) {
-  JsonDocument doc;
-
-  JsonObject temperature = doc["temperature"].to<JsonObject>();
-  temperature["type"] = "Number";
-  temperature["value"] = serialized(String(temperatura, 1));
-
-  JsonObject humidity = doc["humidity"].to<JsonObject>();
-  humidity["type"] = "Number";
-  humidity["value"] = serialized(String(humedad, 1));
-
-  JsonObject light = doc["light"].to<JsonObject>();
-  light["type"] = "Number";
-  light["value"] = serialized(String(luz, 1));
-
-  JsonObject noise = doc["noise"].to<JsonObject>();
-  noise["type"] = "Number";
-  noise["value"] = serialized(String(ruido, 1));
-
-  String payload;
-  serializeJson(doc, payload);
-  return payload;
-}
-
-void displayDeveloperInfo() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0, 0);
-  display.println("Modo Desarrollador");
-  display.drawLine(0, 9, 128, 9, SSD1306_WHITE);
-
-  display.setCursor(0, 12);
-  if (WiFi.status() == WL_CONNECTED) {
-    display.print("WiFi: ");
-    display.setCursor(0, 21);
-    display.println(WiFi.localIP().toString());
-  } else if (WiFi.getMode() == WIFI_AP) {
-    display.println("AP: ESP-HOTSPOT");
-    display.setCursor(0, 21);
-    display.println(WiFi.softAPIP().toString());
-  }
-
-  display.drawLine(0, 30, 128, 30, SSD1306_WHITE);
-  display.setCursor(0, 33);
-  display.print("T:");
-  display.print(stateMachine.sensors.temp, 1);
-  display.setCursor(64, 33);
-  display.print("H:");
-  display.println(stateMachine.sensors.hum, 1);
-  display.setCursor(0, 42);
-  display.print("L:");
-  display.print(stateMachine.sensors.lux, 1);
-  display.setCursor(64, 42);
-  display.print("R:");
-  display.println(stateMachine.sensors.dbValue, 1);
-
-  display.display();
-}
-
-// Agregar después de displayDeveloperInfo()
-void displayStateInfo(const char* estado) {
-  display.setTextSize(1);
-  display.setCursor(0, 0);
-  display.print("Estado: ");
-  display.println(estado);
-  display.drawLine(0, 9, 128, 9, SSD1306_WHITE);
-  // Dibujo de la conexion, para la pantalla, por ahora desactivado
-  display.setCursor(0, 9);
-  if (WiFi.status() == WL_CONNECTED) {
-    display.println(wifiManager.getIP());
-  } else {
-    display.println("Sin conexion");
-  }
-
-  // display.drawLine(0, 20, 128, 20, SSD1306_WHITE);
 }

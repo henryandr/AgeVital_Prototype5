@@ -7,20 +7,17 @@
 #include <WiFi.h>
 
 #include "AppConfig.h"
+#include "DisplayManager.h"
+#include "PayloadBuilder.h"
+#include "SensorManager.h"
 #include "State.h"
 #include "StateMachine.h"
 #include "TokenManager.h"
 #include "WiFiManager.h"
 
-// ===== DECLARACIONES EXTERNAS =====
-extern void readSensors();
-extern void updateDisplay();
-extern void displayStateInfo(const char* estado);
-extern void displayDeveloperInfo();
+// Objetos definidos en TARS.ino
 extern Adafruit_SSD1306 display;
 extern WebServer server;
-extern String construirPayload(float temperatura, float humedad, float luz, float ruido);
-extern String construirPayloadAgente(float temperatura, float humedad, float luz, float ruido);
 
 // ========================================
 // ESTADO INICIO

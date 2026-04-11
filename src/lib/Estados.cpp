@@ -86,7 +86,7 @@ void EstadoLECTURA::execute() {
 
   if (now - statemachine->clocks.tiempo_lectura >= appConfig.intervaloLectura) {
     Serial.println("Estado: LECTURA");
-    readSensors();
+    sensorManager.read();
     if (statemachine->isDisplayOn) {
       updateDisplay();
     }
