@@ -81,7 +81,7 @@ void setup() {
 
   appConfig.begin();  // Carga configuracion desde NVS
 
-  stateMachine.flags.dev = true;
+  stateMachine.flags.dev = false;
 
   // Iniciamos la maquina de estados
   if (stateMachine.flags.dev) {
@@ -89,14 +89,6 @@ void setup() {
   } else {
     stateMachine.begin(new EstadoINICIO());
   }
-
-  // Iniciamos la maquina de estados
-  // if (digitalRead(DEV_PIN) == LOW) {
-  // stateMachine.flags.dev = true;
-  // stateMachine.begin(new EstadoDESARROLLADOR());
-  //} else {
-  // stateMachine.begin(new EstadoINICIO());
-  //}
 }
 
 void loop() {
@@ -363,14 +355,12 @@ void displayStateInfo(const char* estado) {
   display.println(estado);
   display.drawLine(0, 9, 128, 9, SSD1306_WHITE);
   // Dibujo de la conexion, para la pantalla, por ahora desactivado
-  /*display.setCursor(0, 5);
+  display.setCursor(0, 9);
   if (WiFi.status() == WL_CONNECTED) {
-    String ssid = settings.ssid;
-    if (ssid.length() > 10) ssid = ssid.substring(0, 10) + "...";
-    display.println(ssid);
+    display.println(wifiManager.getIP());
   } else {
     display.println("Sin conexion");
-  }*/
+  }
 
   // display.drawLine(0, 20, 128, 20, SSD1306_WHITE);
 }
