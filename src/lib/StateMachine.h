@@ -32,11 +32,6 @@ struct SensorData {
   float voltage = 0.0;
 };
 
-// ===== NUEVA: Estructura de configuración =====
-struct Config {
-  unsigned long TIEMPO_INACTIVIDAD = 1000000;  // 10 segundos
-};
-
 class StateMachine {
  private:
   State* currentState;
@@ -47,7 +42,6 @@ class StateMachine {
   Flags flags;
   Clocks clocks;
   SensorData sensors;
-  Config settings;
 
   volatile int screenMode = 0;
   bool isDisplayOn = true;

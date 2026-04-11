@@ -62,6 +62,38 @@ void SensorManager::read() {
   stateMachine.sensors.voltage = voltage;
   stateMachine.sensors.dbValue = voltage * 50.0f;
 
-  Serial.printf("Temp: %.1f C | Hum: %.1f %% | Lux: %.1f | Ruido: %.1f dBA\n", stateMachine.sensors.temp, stateMachine.sensors.hum, stateMachine.sensors.lux,
-                stateMachine.sensors.dbValue);
+  // ===== ACUMULACIÓN PARA PROMEDIO =====
+  accTemp += stateMachine.sensors.temp;
+  accHum += stateMachine.sensors.hum;
+  accLux += stateMachine.sensors.lux;
+  accNoise += stateMachine.sensors.dbValue;
+  sampleCount++;
+
+  Serial.printf("Temp: %.1f C | Hum: %.1f %% | Lux: %.1f | Ruido: %.1f dBA | Muestras: %d\n", stateMachine.sensors.temp, stateMachine.sensors.hum,
+                stateMachine.sensors.lux, stateMachine.sensors.dbValue, sampleCount);
+}
+
+SensorData SensorManager::getAverages() {
+  if (sampleCount == 0) {
+    Serial.println("[SensorManager] WARN: sin muestras acumuladas, usando último valor conocido como fallback");
+    return stateMachine.sensors;
+  }
+
+  SensorData avg;
+  avg.temp = accTemp / sampleCount;
+  avg.hum = accHum / sampleCount;
+  avg.lux = accLux / sampleCount;
+  avg.dbValue = accNoise / sampleCount;
+
+  Serial.printf("[SensorManager] Promedio de %d muestras — Temp: %.1f | Hum: %.1f | Lux: %.1f | Ruido: %.1f\n", sampleCount, avg.temp, avg.hum, avg.lux, avg.dbValue);
+  return avg;
+}
+
+void SensorManager::resetAccumulator() {
+  accTemp = 0.0f;
+  accHum = 0.0f;
+  accLux = 0.0f;
+  accNoise = 0.0f;
+  sampleCount = 0;
+  Serial.println("[SensorManager] Acumulador reseteado");
 }

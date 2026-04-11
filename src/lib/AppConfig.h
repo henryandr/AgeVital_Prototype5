@@ -14,6 +14,7 @@ class AppConfig {
   unsigned long intervaloEnvio = 15000;
   unsigned long intervaloLectura = 2000;
   unsigned long intervaloReintento = 20000;
+  unsigned long tiempoInactividad = 10000;
 
   // ===== CREDENCIALES KEYROCK // SE ESTAN DEJANDO ESTOS PARAMETROS COMO EL DEFAULT=====
   String tokenUrl = "http://10.38.35.216:3001/oauth2/token";
@@ -32,6 +33,7 @@ class AppConfig {
     intervaloEnvio = prefs.getULong("intervaloEnvio", intervaloEnvio);
     intervaloLectura = prefs.getULong("intervaloLectura", intervaloLectura);
     intervaloReintento = prefs.getULong("intervaloReintento", intervaloReintento);
+    tiempoInactividad = prefs.getULong("tiempoInactividad", tiempoInactividad);
 
     tokenUrl = prefs.getString("tokenUrl", tokenUrl.c_str());
     clientId = prefs.getString("clientId", clientId.c_str());
@@ -61,6 +63,7 @@ class AppConfig {
     prefs.putULong("intervaloEnvio", intervaloEnvio);
     prefs.putULong("intervaloLectura", intervaloLectura);
     prefs.putULong("intervaloReintento", intervaloReintento);
+    prefs.putULong("tiempoInactividad", tiempoInactividad);
 
     prefs.putString("tokenUrl", tokenUrl.c_str());
     prefs.putString("clientId", clientId.c_str());
@@ -82,6 +85,7 @@ class AppConfig {
     intervaloEnvio = 15000;
     intervaloLectura = 2000;
     intervaloReintento = 20000;
+    tiempoInactividad = 10000;
 
     tokenUrl = "http://10.38.35.216:3001/oauth2/token";
     clientId = "d4eac061-b057-45ff-87b2-f317275c3f58";

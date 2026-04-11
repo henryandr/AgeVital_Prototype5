@@ -72,7 +72,7 @@ void EstadoLECTURA::execute() {
     return;
   }
 
-  if (statemachine->isDisplayOn && (now - statemachine->clocks.ultima_interaccion > statemachine->settings.TIEMPO_INACTIVIDAD)) {
+  if (statemachine->isDisplayOn && (now - statemachine->clocks.ultima_interaccion > appConfig.tiempoInactividad)) {
     display.clearDisplay();
     display.display();
     statemachine->isDisplayOn = false;
@@ -115,9 +115,11 @@ void EstadoENVIO::onEnter() {
   statemachine->flags.inicio = false;
   statemachine->flags.lectura = false;
 
-  display.clearDisplay();
-  displayStateInfo("ENVIO");
-  display.display();
+  if (statemachine->isDisplayOn) {
+    display.clearDisplay();
+    displayStateInfo("ENVIO");
+    display.display();
+  }
 }
 
 void EstadoENVIO::execute() {
@@ -140,11 +142,14 @@ void EstadoENVIO::execute() {
   if (appConfig.useAgent) {
     Serial.println("[ENVIO] Modo agente activo, enviando sin token...");
 
+    SensorData avg = sensorManager.getAverages();
+    sensorManager.resetAccumulator();
+
     HTTPClient httpAgent;
     httpAgent.begin(appConfig.agentUrl);
     httpAgent.addHeader("Content-Type", "application/json");
 
-    String agentPayload = construirPayload(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
+    String agentPayload = construirPayload(avg.temp, avg.hum, avg.lux, avg.dbValue);
 
     Serial.println("[AGENTE] Payload:");
     Serial.println(agentPayload);
@@ -180,7 +185,10 @@ void EstadoENVIO::execute() {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + tokenManager.getToken());
 
-  String payload = construirPayload(statemachine->sensors.temp, statemachine->sensors.hum, statemachine->sensors.lux, statemachine->sensors.dbValue);
+  SensorData avg = sensorManager.getAverages();
+  sensorManager.resetAccumulator();
+
+  String payload = construirPayload(avg.temp, avg.hum, avg.lux, avg.dbValue);
   Serial.println("[ENVIO] Payload JSON:");
   Serial.println(payload);
 

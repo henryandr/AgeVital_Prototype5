@@ -52,11 +52,13 @@ Configura WiFi, parametros del sistema o actualiza el firmware
 <label>URL del Servidor</label>
 <input type="text" name="serverUrl" placeholder="http://servidor/ruta">
 <label>Intervalo de Envio (ms)</label>
-<input type="number" name="intervaloEnvio" placeholder="15000" min="1000">
+<input type="number" name="intervaloEnvio" placeholder="15000" min="10000">
 <label>Intervalo de Lectura (ms)</label>
 <input type="number" name="intervaloLectura" placeholder="2000" min="500">
 <label>Intervalo de Reintento (ms)</label>
-<input type="number" name="intervaloReintento" placeholder="20000" min="1000">
+<input type="number" name="intervaloReintento" placeholder="20000" min="10000">
+<label>Tiempo de Inactividad Pantalla (ms)</label>
+<input type="number" name="tiempoInactividad" placeholder="10000" min="10000">
 <button type="submit">💾 Guardar Configuracion</button>
 </form>
 </div>
@@ -174,11 +176,13 @@ void DevWebOTA::begin() {
     String newEnvio = server->arg("intervaloEnvio");
     String newLectura = server->arg("intervaloLectura");
     String newReintento = server->arg("intervaloReintento");
+    String newInactividad = server->arg("tiempoInactividad");
 
     if (newUrl.length() > 0) appConfig.serverUrl = newUrl;
     if (newEnvio.length() > 0) appConfig.intervaloEnvio = newEnvio.toInt();
     if (newLectura.length() > 0) appConfig.intervaloLectura = newLectura.toInt();
     if (newReintento.length() > 0) appConfig.intervaloReintento = newReintento.toInt();
+    if (newInactividad.length() > 0) appConfig.tiempoInactividad = newInactividad.toInt();
 
     appConfig.save();
 
@@ -186,6 +190,7 @@ void DevWebOTA::begin() {
     Serial.printf("[Config] intervaloEnvio: %lu\n", appConfig.intervaloEnvio);
     Serial.printf("[Config] intervaloLectura: %lu\n", appConfig.intervaloLectura);
     Serial.printf("[Config] intervaloReintento: %lu\n", appConfig.intervaloReintento);
+    Serial.printf("[Config] tiempoInactividad: %lu\n", appConfig.tiempoInactividad);
 
     server->send(200, "text/html",
                  "<!DOCTYPE html><html><head><meta charset='UTF-8'>"

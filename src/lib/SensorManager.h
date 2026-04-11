@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 
+#include "StateMachine.h"
+
 // HARDWARE DE SENSORES
 #define SOUND_SENSOR_PIN 35
 #define VREF 3.7f
@@ -35,12 +37,29 @@ class SensorManager {
   // Contador de errores I2C consecutivos del HDC1080
   int hdc1080ErrorCount = 0;
 
+  // ===== ACUMULADOR PARA PROMEDIADO =====
+  float accTemp = 0.0f;
+  float accHum = 0.0f;
+  float accLux = 0.0f;
+  float accNoise = 0.0f;
+  int sampleCount = 0;
+
  public:
   // Inicializa el buffer del filtro de lux con la primera lectura real
   void begin();
 
-  // Lee todos los sensores y actualiza stateMachine.sensors
+  // Lee todos los sensores, actualiza stateMachine.sensors y acumula para promedio
   void read();
+
+  // Devuelve el promedio de las muestras acumuladas desde el último reset.
+  // Fallback: si sampleCount == 0 retorna stateMachine.sensors (último valor válido)
+  SensorData getAverages();
+
+  // Resetea el acumulador — llamar justo después de getAverages() en EstadoENVIO
+  void resetAccumulator();
+
+  // Cuántas muestras hay acumuladas actualmente
+  int getSampleCount() const { return sampleCount; }
 };
 
 extern SensorManager sensorManager;

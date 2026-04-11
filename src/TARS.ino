@@ -23,7 +23,7 @@
 // ===== HARDWARE =====
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-#define BUTTON_PIN 27
+#define BUTTON_PIN 4  // IMPORTANTE: el pin 27 es del TARS original, el pin 4 Corresponde al button pin de los 5 tars hechos sin pcb
 
 // ===== OBJETOS GLOBALES =====
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
