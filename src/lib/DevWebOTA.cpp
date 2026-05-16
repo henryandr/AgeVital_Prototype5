@@ -144,17 +144,21 @@ else{s.className='error';s.textContent='Error en la actualizacion';}
 </html>
 )=====";
 
-DevWebOTA::DevWebOTA(WebServer* srv) : server(srv), initialized(false) {}
+DevWebOTA::DevWebOTA(WebServer *srv)
+    : server(srv), initialized(false), routesRegistered(false) {}
 
 void DevWebOTA::begin() {
-  if (initialized) return;
+  if (initialized)
+    return;
   Serial.println("\n=== MODO DESARROLLADOR ACTIVADO ===\n");
 
   if (!wifiManager.connect()) {
     wifiManager.createAP(appConfig.hostname);
   }
 
-  // ===== RUTAS =====
+  // Las rutas SOLO se registran una vez (WebServer no soporta removeHandler,
+  // cada .on() crea un handler en heap que se acumula si se repite)
+  if (!routesRegistered) {
 
   server->on("/", HTTP_GET, [this]() {
     Serial.println("RESPUESTA GET / EXITOSA");
@@ -172,13 +176,16 @@ void DevWebOTA::begin() {
       wifiManager.saveCredentials(newssid, newpass);
       Serial.printf("WiFi guardado: %s\n", newssid.c_str());
 
-      server->send(200, "text/html",
-                   "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>"
-                   "<body style='font-family:Arial;text-align:center;padding:50px;background:#f0f0f0'>"
-                   "<div style='background:white;padding:40px;border-radius:10px'>"
-                   "<h1 style='color:#4CAF50'>Configuracion Guardada</h1>"
-                   "<p>El dispositivo se reiniciara en 3 segundos...</p>"
-                   "</div></body></html>");
+      server->send(
+          200, "text/html",
+          "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>"
+          "<body "
+          "style='font-family:Arial;text-align:center;padding:50px;background:#"
+          "f0f0f0'>"
+          "<div style='background:white;padding:40px;border-radius:10px'>"
+          "<h1 style='color:#4CAF50'>Configuracion Guardada</h1>"
+          "<p>El dispositivo se reiniciara en 3 segundos...</p>"
+          "</div></body></html>");
       delay(3000);
       ESP.restart();
     } else {
@@ -194,30 +201,42 @@ void DevWebOTA::begin() {
     String newReintento = server->arg("intervaloReintento");
     String newInactividad = server->arg("tiempoInactividad");
 
-    if (newUrl.length() > 0) appConfig.serverUrl = newUrl;
-    if (newHostname.length() > 0) appConfig.hostname = newHostname;
-    if (newEnvio.length() > 0) appConfig.intervaloEnvio = newEnvio.toInt();
-    if (newLectura.length() > 0) appConfig.intervaloLectura = newLectura.toInt();
-    if (newReintento.length() > 0) appConfig.intervaloReintento = newReintento.toInt();
-    if (newInactividad.length() > 0) appConfig.tiempoInactividad = newInactividad.toInt();
+    if (newUrl.length() > 0)
+      appConfig.serverUrl = newUrl;
+    if (newHostname.length() > 0)
+      appConfig.hostname = newHostname;
+    if (newEnvio.length() > 0)
+      appConfig.intervaloEnvio = newEnvio.toInt();
+    if (newLectura.length() > 0)
+      appConfig.intervaloLectura = newLectura.toInt();
+    if (newReintento.length() > 0)
+      appConfig.intervaloReintento = newReintento.toInt();
+    if (newInactividad.length() > 0)
+      appConfig.tiempoInactividad = newInactividad.toInt();
 
     appConfig.save();
 
     Serial.printf("[Config] serverUrl: %s\n", appConfig.serverUrl.c_str());
     Serial.printf("[Config] intervaloEnvio: %lu\n", appConfig.intervaloEnvio);
-    Serial.printf("[Config] intervaloLectura: %lu\n", appConfig.intervaloLectura);
-    Serial.printf("[Config] intervaloReintento: %lu\n", appConfig.intervaloReintento);
-    Serial.printf("[Config] tiempoInactividad: %lu\n", appConfig.tiempoInactividad);
+    Serial.printf("[Config] intervaloLectura: %lu\n",
+                  appConfig.intervaloLectura);
+    Serial.printf("[Config] intervaloReintento: %lu\n",
+                  appConfig.intervaloReintento);
+    Serial.printf("[Config] tiempoInactividad: %lu\n",
+                  appConfig.tiempoInactividad);
     Serial.printf("[Config] hostname: %s\n", appConfig.hostname.c_str());
 
-    server->send(200, "text/html",
-                 "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
-                 "<meta http-equiv='refresh' content='2;url=/'></head>"
-                 "<body style='font-family:Arial;text-align:center;padding:50px;background:#f0f0f0'>"
-                 "<div style='background:white;padding:40px;border-radius:10px'>"
-                 "<h1 style='color:#4CAF50'>Configuracion Guardada</h1>"
-                 "<p>Volviendo al panel...</p>"
-                 "</div></body></html>");
+    server->send(
+        200, "text/html",
+        "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+        "<meta http-equiv='refresh' content='2;url=/'></head>"
+        "<body "
+        "style='font-family:Arial;text-align:center;padding:50px;background:#"
+        "f0f0f0'>"
+        "<div style='background:white;padding:40px;border-radius:10px'>"
+        "<h1 style='color:#4CAF50'>Configuracion Guardada</h1>"
+        "<p>Volviendo al panel...</p>"
+        "</div></body></html>");
   });
 
   server->on("/config/reset", HTTP_POST, [this]() {
@@ -227,19 +246,24 @@ void DevWebOTA::begin() {
 
     Serial.printf("[Config] serverUrl: %s\n", appConfig.serverUrl.c_str());
     Serial.printf("[Config] intervaloEnvio: %lu\n", appConfig.intervaloEnvio);
-    Serial.printf("[Config] intervaloLectura: %lu\n", appConfig.intervaloLectura);
-    Serial.printf("[Config] intervaloReintento: %lu\n", appConfig.intervaloReintento);
+    Serial.printf("[Config] intervaloLectura: %lu\n",
+                  appConfig.intervaloLectura);
+    Serial.printf("[Config] intervaloReintento: %lu\n",
+                  appConfig.intervaloReintento);
     Serial.printf("[Keyrock] tokenUrl: %s\n", appConfig.tokenUrl.c_str());
     Serial.printf("[Keyrock] clientId: %s\n", appConfig.clientId.c_str());
     Serial.printf("[Keyrock] keyrockUser: %s\n", appConfig.keyrockUser.c_str());
-    server->send(200, "text/html",
-                 "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
-                 "<meta http-equiv='refresh' content='2;url=/'></head>"
-                 "<body style='font-family:Arial;text-align:center;padding:50px;background:#f0f0f0'>"
-                 "<div style='background:white;padding:40px;border-radius:10px'>"
-                 "<h1 style='color:#FF9800'>Defaults Restaurados</h1>"
-                 "<p>Volviendo al panel...</p>"
-                 "</div></body></html>");
+    server->send(
+        200, "text/html",
+        "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+        "<meta http-equiv='refresh' content='2;url=/'></head>"
+        "<body "
+        "style='font-family:Arial;text-align:center;padding:50px;background:#"
+        "f0f0f0'>"
+        "<div style='background:white;padding:40px;border-radius:10px'>"
+        "<h1 style='color:#FF9800'>Defaults Restaurados</h1>"
+        "<p>Volviendo al panel...</p>"
+        "</div></body></html>");
   });
 
   // ===== Ruta Keyrock =====
@@ -251,11 +275,16 @@ void DevWebOTA::begin() {
     String newKeyrockPass = server->arg("keyrockPass");
     String newSkipToken = server->arg("skipToken");
 
-    if (newTokenUrl.length() > 0) appConfig.tokenUrl = newTokenUrl;
-    if (newClientId.length() > 0) appConfig.clientId = newClientId;
-    if (newClientSecret.length() > 0) appConfig.clientSecret = newClientSecret;
-    if (newKeyrockUser.length() > 0) appConfig.keyrockUser = newKeyrockUser;
-    if (newKeyrockPass.length() > 0) appConfig.keyrockPass = newKeyrockPass;
+    if (newTokenUrl.length() > 0)
+      appConfig.tokenUrl = newTokenUrl;
+    if (newClientId.length() > 0)
+      appConfig.clientId = newClientId;
+    if (newClientSecret.length() > 0)
+      appConfig.clientSecret = newClientSecret;
+    if (newKeyrockUser.length() > 0)
+      appConfig.keyrockUser = newKeyrockUser;
+    if (newKeyrockPass.length() > 0)
+      appConfig.keyrockPass = newKeyrockPass;
     appConfig.skipToken = (newSkipToken == "1");
 
     appConfig.save();
@@ -265,14 +294,17 @@ void DevWebOTA::begin() {
     Serial.printf("[Keyrock] clientId: %s\n", appConfig.clientId.c_str());
     Serial.printf("[Keyrock] keyrockUser: %s\n", appConfig.keyrockUser.c_str());
 
-    server->send(200, "text/html",
-                 "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
-                 "<meta http-equiv='refresh' content='2;url=/'></head>"
-                 "<body style='font-family:Arial;text-align:center;padding:50px;background:#f0f0f0'>"
-                 "<div style='background:white;padding:40px;border-radius:10px'>"
-                 "<h1 style='color:#4CAF50'>Credenciales Keyrock Guardadas</h1>"
-                 "<p>Volviendo al panel...</p>"
-                 "</div></body></html>");
+    server->send(
+        200, "text/html",
+        "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+        "<meta http-equiv='refresh' content='2;url=/'></head>"
+        "<body "
+        "style='font-family:Arial;text-align:center;padding:50px;background:#"
+        "f0f0f0'>"
+        "<div style='background:white;padding:40px;border-radius:10px'>"
+        "<h1 style='color:#4CAF50'>Credenciales Keyrock Guardadas</h1>"
+        "<p>Volviendo al panel...</p>"
+        "</div></body></html>");
   });
 
   // ===== Ruta Agente  =====
@@ -280,22 +312,27 @@ void DevWebOTA::begin() {
     String newAgentUrl = server->arg("agentUrl");
     String newUseAgent = server->arg("useAgent");
 
-    if (newAgentUrl.length() > 0) appConfig.agentUrl = newAgentUrl;
+    if (newAgentUrl.length() > 0)
+      appConfig.agentUrl = newAgentUrl;
     appConfig.useAgent = (newUseAgent == "1");
 
     appConfig.save();
 
     Serial.printf("[Agente] agentUrl: %s\n", appConfig.agentUrl.c_str());
-    Serial.printf("[Agente] useAgent: %s\n", appConfig.useAgent ? "true" : "false");
+    Serial.printf("[Agente] useAgent: %s\n",
+                  appConfig.useAgent ? "true" : "false");
 
-    server->send(200, "text/html",
-                 "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
-                 "<meta http-equiv='refresh' content='2;url=/'></head>"
-                 "<body style='font-family:Arial;text-align:center;padding:50px;background:#f0f0f0'>"
-                 "<div style='background:white;padding:40px;border-radius:10px'>"
-                 "<h1 style='color:#4CAF50'>Agente Flask Guardado</h1>"
-                 "<p>Volviendo al panel...</p>"
-                 "</div></body></html>");
+    server->send(
+        200, "text/html",
+        "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+        "<meta http-equiv='refresh' content='2;url=/'></head>"
+        "<body "
+        "style='font-family:Arial;text-align:center;padding:50px;background:#"
+        "f0f0f0'>"
+        "<div style='background:white;padding:40px;border-radius:10px'>"
+        "<h1 style='color:#4CAF50'>Agente Flask Guardado</h1>"
+        "<p>Volviendo al panel...</p>"
+        "</div></body></html>");
   });
 
   // ===== Ruta Identificar Dispositivo =====
@@ -304,7 +341,8 @@ void DevWebOTA::begin() {
     server->send(200, "text/plain", "Parpadeando OLED...");
   });
 
-  // Ruta para OTA -- Esto no se toca a menos que quieras personalizar el proceso de actualización
+  // Ruta para OTA -- Esto no se toca a menos que quieras personalizar el
+  // proceso de actualización
   server->on(
       "/ota", HTTP_POST,
       [this]() {
@@ -314,17 +352,19 @@ void DevWebOTA::begin() {
         ESP.restart();
       },
       [this]() {
-        HTTPUpload& upload = server->upload();
+        HTTPUpload &upload = server->upload();
         if (upload.status == UPLOAD_FILE_START) {
           Serial.printf("Iniciando OTA: %s\n", upload.filename.c_str());
           if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
             Update.printError(Serial);
           }
         } else if (upload.status == UPLOAD_FILE_WRITE) {
-          if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+          if (Update.write(upload.buf, upload.currentSize) !=
+              upload.currentSize) {
             Update.printError(Serial);
           } else {
-            Serial.printf("  Progreso: %d%%\r", (Update.progress() * 100) / Update.size());
+            Serial.printf("  Progreso: %d%%\r",
+                          (Update.progress() * 100) / Update.size());
           }
         } else if (upload.status == UPLOAD_FILE_END) {
           if (Update.end(true)) {
@@ -337,8 +377,15 @@ void DevWebOTA::begin() {
       });
 
   server->begin();
-  MDNS.addService("http", "tcp", 80);  // Service discovery para mDNS
+  MDNS.addService("http", "tcp", 80); // Service discovery para mDNS
   Serial.println("Servidor web iniciado en puerto 80\n");
+  routesRegistered = true;
+  } else {
+    // Rutas ya registradas, solo re-arrancar el servidor
+    server->begin();
+    MDNS.addService("http", "tcp", 80);
+    Serial.println("Servidor web re-iniciado en puerto 80\n");
+  }
   initialized = true;
 }
 

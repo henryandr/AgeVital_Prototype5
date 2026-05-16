@@ -334,8 +334,10 @@ void EstadoDESARROLLADOR::onExit() {
   primera_vez = true;
   if (devWeb) {
     devWeb->end();
-    delete devWeb;
-    devWeb = nullptr;
+    // NO hacer delete devWeb: las rutas de WebServer capturan 'this'
+    // via lambdas. Si se destruye y recrea en otra dirección de heap,
+    // los lambdas viejos apuntan a memoria liberada → crash.
+    // devWeb se mantiene como singleton reutilizable.
   }
 }
 

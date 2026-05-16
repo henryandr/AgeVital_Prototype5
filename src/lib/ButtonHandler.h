@@ -4,19 +4,19 @@
 #include <Arduino.h>
 
 class ButtonHandler {
- public:
+public:
   enum Event { NONE, SHORT_PRESS, LONG_PRESS };
 
- private:
+private:
   uint8_t pin;
-  bool wasPressed = false;        // Estaba presionado en el ciclo anterior?
-  bool longPressHandled = false;  // Ya disparamos el long press?
-  unsigned long pressedAt = 0;    // Cuando empezo a presionar?
+  bool wasPressed = false;       // Estaba presionado en el ciclo anterior?
+  bool longPressHandled = false; // Ya disparamos el long press?
+  unsigned long pressedAt = 0;   // Cuando empezo a presionar?
 
   static const unsigned long DEBOUNCE_TIME = 50;
-  static const unsigned long LONG_PRESS_TIME = 5000;
+  static const unsigned long LONG_PRESS_TIME = 4000;
 
- public:
+public:
   ButtonHandler(uint8_t buttonPin) { pin = buttonPin; }
 
   void begin() { pinMode(pin, INPUT_PULLUP); }
@@ -32,7 +32,8 @@ class ButtonHandler {
     }
 
     // Está manteniendo presionado y ya pasaron 5 seg
-    if (pressed && !longPressHandled && (millis() - pressedAt >= LONG_PRESS_TIME)) {
+    if (pressed && !longPressHandled &&
+        (millis() - pressedAt >= LONG_PRESS_TIME)) {
       longPressHandled = true;
       event = LONG_PRESS;
     }

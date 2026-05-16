@@ -24,7 +24,7 @@
 // ===== HARDWARE =====
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-#define BUTTON_PIN 27  // IMPORTANTE: el pin 27 es del TARS original, el pin 4 Corresponde al button pin de los 5 tars hechos sin pcb
+#define BUTTON_PIN 27 // IMPORTANTE: el pin 27 es del TARS original, el pin 4 (button pcbs)
 
 // ===== OBJETOS GLOBALES =====
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
@@ -38,7 +38,7 @@ ButtonHandler buttonHandler(BUTTON_PIN);
 StateMachine stateMachine;
 SensorManager sensorManager;
 
-SET_LOOP_TASK_STACK_SIZE(16384);  // 16KB stack para soportar WiFiClientSecure + JSON
+SET_LOOP_TASK_STACK_SIZE(16384); // 16KB stack para soportar WiFiClientSecure + JSON
 
 void setup() {
   Serial.begin(115200);
