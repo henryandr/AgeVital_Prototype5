@@ -62,6 +62,7 @@ class EstadoENVIO : public State {
 class EstadoDESARROLLADOR : public State {
  private:
   bool primera_vez = true;
+  unsigned long lastDisplayRefresh = 0;
 
  public:
   void onEnter() override;

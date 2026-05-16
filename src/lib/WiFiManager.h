@@ -9,29 +9,32 @@ class WiFiManager {
  private:
   Preferences prefs;
 
-  // Valores por defecto para la conexión WiFi
-  const char* defaultSSID = "Claro_2C06BE";
-  const char* defaultPass = "16652524";
-
-  // Access Point
-  const char* apSSID = "ESP-HOTSPOT-TARS1";
+  // Access Point — password fija, SSID se genera dinámicamente en createAP()
   const char* apPass = "12345678";
 
+  // Control de reconexión
+  unsigned long lastReconnectAttempt = 0;
+  static const unsigned long RECONNECT_INTERVAL = 30000;  // 30s entre intentos
+
  public:
+  // Conecta a WiFi usando credenciales de NVS. Bloqueante solo para arranque.
+  // Retorna false si no hay credenciales o si falla la conexión.
   bool connect(int maxAttempts = 20) {
     prefs.begin("agevital", true);
-    String ssid = prefs.getString("ssid", defaultSSID);
-    String pass = prefs.getString("pass", defaultPass);
+    String ssid = prefs.getString("ssid", "");
+    String pass = prefs.getString("pass", "");
     prefs.end();
 
     if (ssid.length() == 0) {
-      Serial.println("[WiFiManager] No SSID configurado");
+      Serial.println("[WiFiManager] No hay SSID configurado en NVS");
       return false;
     }
 
     Serial.printf("[WiFiManager] Conectando a: %s\n", ssid.c_str());
     WiFi.mode(WIFI_STA);
-    WiFi.setAutoReconnect(true);
+    WiFi.persistent(false);       // No escribir credenciales en flash (usamos NVS)
+    WiFi.setAutoReconnect(true);  // Reconexión automática del stack WiFi
+    WiFi.setSleep(false);         // Desactivar modem sleep para conexión estable
     WiFi.begin(ssid.c_str(), pass.c_str());
 
     int attempts = 0;
@@ -42,21 +45,37 @@ class WiFiManager {
     }
 
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.printf("\n[WiFiManager] Conectado! IP: %s\n", WiFi.localIP().toString().c_str());
+      Serial.printf("\n[WiFiManager] Conectado! IP: %s | RSSI: %d dBm\n",
+                    WiFi.localIP().toString().c_str(), WiFi.RSSI());
       return true;
     } else {
       Serial.println("\n[WiFiManager] Conexión fallida");
+      WiFi.disconnect();
       return false;
     }
   }
 
-  void createAP() {
+  // Crea Access Point con nombre dinámico basado en hostname
+  void createAP(const String& hostname) {
+    String apSSID = "TARS-" + hostname;
     Serial.println("[WiFiManager] Creando Access Point...");
     WiFi.mode(WIFI_AP);
-    WiFi.softAP(apSSID, apPass);
-    Serial.printf("[WiFiManager] SSID: %s\n", apSSID);
+    WiFi.softAP(apSSID.c_str(), apPass);
+    Serial.printf("[WiFiManager] SSID: %s\n", apSSID.c_str());
     Serial.printf("[WiFiManager] Password: %s\n", apPass);
     Serial.printf("[WiFiManager] IP: %s\n", WiFi.softAPIP().toString().c_str());
+  }
+
+  // Verificar y mantener conexión WiFi — llamar periódicamente desde EstadoLECTURA
+  void maintainConnection() {
+    if (WiFi.status() == WL_CONNECTED) return;
+
+    unsigned long now = millis();
+    if (now - lastReconnectAttempt < RECONNECT_INTERVAL) return;
+    lastReconnectAttempt = now;
+
+    Serial.printf("[WiFiManager] WiFi desconectado, intentando reconexión... (RSSI anterior: %d)\n", WiFi.RSSI());
+    WiFi.reconnect();
   }
 
   void saveCredentials(const String& newSSID, const String& newPass) {
@@ -71,7 +90,14 @@ class WiFiManager {
     prefs.begin("agevital", false);
     prefs.clear();
     prefs.end();
-    Serial.println("[WiFiManager] Credenciales restauradas a los valores por defecto");
+    Serial.println("[WiFiManager] Credenciales WiFi borradas");
+  }
+
+  bool hasCredentials() {
+    prefs.begin("agevital", true);
+    String ssid = prefs.getString("ssid", "");
+    prefs.end();
+    return ssid.length() > 0;
   }
 
   bool isConnected() { return WiFi.status() == WL_CONNECTED; }
@@ -80,6 +106,11 @@ class WiFiManager {
     if (WiFi.status() == WL_CONNECTED) return WiFi.localIP().toString();
     if (WiFi.getMode() == WIFI_AP) return WiFi.softAPIP().toString();
     return "No conectado";
+  }
+
+  String getSSID() {
+    if (WiFi.status() == WL_CONNECTED) return WiFi.SSID();
+    return "";
   }
 };
 

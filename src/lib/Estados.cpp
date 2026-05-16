@@ -22,6 +22,14 @@ void EstadoINICIO::onEnter() {
 void EstadoINICIO::execute() {
   if (!firstRun) return;
 
+  // Fase 5: Si es primer boot, forzar setup desde modo desarrollador
+  if (!appConfig.isConfigured) {
+    Serial.println("[INICIO] Primer boot detectado — forzando modo DESARROLLADOR para setup");
+    statemachine->flags.dev = true;
+    statemachine->ChangeState(new EstadoDESARROLLADOR());
+    return;
+  }
+
   if (statemachine->flags.dev) {
     Serial.println("Cambiando a Estado DESARROLLADOR desde INICIO");
     statemachine->ChangeState(new EstadoDESARROLLADOR());
@@ -99,7 +107,11 @@ void EstadoLECTURA::execute() {
 
   if (statemachine->flags.envio_programado && (long)(now - statemachine->clocks.proximo_envio) >= 0) {
     statemachine->ChangeState(new EstadoENVIO());
+    return;
   }
+
+  // Mantener conexión WiFi activa (reconexión no-bloqueante cada 30s)
+  wifiManager.maintainConnection();
 }
 
 void EstadoLECTURA::onExit() {
@@ -184,21 +196,33 @@ void EstadoENVIO::execute() {
   }
 
   Serial.println("Estado: ENVIO");
-  WiFiClientSecure client;
-  client.setInsecure();
-  HTTPClient http;
-  http.begin(client, appConfig.serverUrl);
-  http.addHeader("Content-Type", "application/json");
-  if (!appConfig.skipToken) {
-    http.addHeader("Authorization", "Bearer " + tokenManager.getToken());
-  }
+  Serial.printf("[ENVIO] Free heap: %u bytes\n", ESP.getFreeHeap());
 
+  // Construir payload ANTES de abrir conexión HTTP (JsonDocument se libera al retornar)
   SensorData avg = sensorManager.getAverages();
   sensorManager.resetAccumulator();
 
   String payload = construirPayload(avg.temp, avg.hum, avg.lux, avg.dbValue);
   Serial.println("[ENVIO] Payload JSON:");
   Serial.println(payload);
+
+  // WiFiClientSecure en heap para no desbordar el stack (~16KB de buffers TLS)
+  WiFiClientSecure* client = new WiFiClientSecure();
+  if (!client) {
+    Serial.println("[ENVIO] Error: sin memoria para WiFiClientSecure");
+    statemachine->clocks.proximo_envio = now + appConfig.intervaloReintento;
+    statemachine->flags.envio_programado = true;
+    statemachine->ChangeState(new EstadoLECTURA());
+    return;
+  }
+  client->setInsecure();
+
+  HTTPClient http;
+  http.begin(*client, appConfig.serverUrl);
+  http.addHeader("Content-Type", "application/json");
+  if (!appConfig.skipToken) {
+    http.addHeader("Authorization", "Bearer " + tokenManager.getToken());
+  }
 
   int httpResponseCode = http.PATCH(payload);
 
@@ -208,32 +232,37 @@ void EstadoENVIO::execute() {
     Serial.println("✗ Token rechazado (401), forzando renovación");
     tokenManager.clear();
     http.end();
+    delete client;
 
     if (tokenManager.ensureValidToken()) {
-      WiFiClientSecure retryClient;
-      retryClient.setInsecure();
-      HTTPClient retryhttp;
-      retryhttp.begin(retryClient, appConfig.serverUrl);
-      retryhttp.addHeader("Content-Type", "application/json");
-      retryhttp.addHeader("Authorization", "Bearer " + tokenManager.getToken());
+      WiFiClientSecure* retryClient = new WiFiClientSecure();
+      if (retryClient) {
+        retryClient->setInsecure();
+        HTTPClient retryhttp;
+        retryhttp.begin(*retryClient, appConfig.serverUrl);
+        retryhttp.addHeader("Content-Type", "application/json");
+        retryhttp.addHeader("Authorization", "Bearer " + tokenManager.getToken());
 
-      int retrycode = retryhttp.PATCH(payload);
-      if (retrycode >= 200 && retrycode < 300) {
-        Serial.printf("✓ Reintento exitoso, código: %d\n", retrycode);
-      } else {
-        Serial.printf("✗ Reintento fallido, código: %d\n", retrycode);
+        int retrycode = retryhttp.PATCH(payload);
+        if (retrycode >= 200 && retrycode < 300) {
+          Serial.printf("✓ Reintento exitoso, código: %d\n", retrycode);
+        } else {
+          Serial.printf("✗ Reintento fallido, código: %d\n", retrycode);
+        }
+        retryhttp.end();
+        delete retryClient;
       }
-      retryhttp.end();
     }
     statemachine->clocks.proximo_envio = now + appConfig.intervaloEnvio;
     statemachine->flags.envio_programado = true;
     statemachine->ChangeState(new EstadoLECTURA());
-
+    return;  // Evitar doble ChangeState
   } else {
     Serial.printf("✗ Error en envío: %s\n", http.errorToString(httpResponseCode).c_str());
   }
 
   http.end();
+  delete client;
   statemachine->clocks.proximo_envio = now + appConfig.intervaloEnvio;
   statemachine->flags.envio_programado = true;
   statemachine->ChangeState(new EstadoLECTURA());
@@ -257,9 +286,7 @@ void EstadoDESARROLLADOR::onEnter() {
   statemachine->flags.lectura = false;
   primera_vez = true;
 
-  display.clearDisplay();
-  displayStateInfo("DESARROLLADOR");
-  display.display();
+  displayDeveloperInfo();
 
   if (wifiManager.isConnected()) MDNS.begin(appConfig.hostname.c_str());
 }
@@ -274,6 +301,13 @@ void EstadoDESARROLLADOR::execute() {
   }
 
   devWeb->handle();
+
+  // Refrescar pantalla cada 2s
+  unsigned long now = millis();
+  if (now - lastDisplayRefresh >= 2000) {
+    displayDeveloperInfo();
+    lastDisplayRefresh = now;
+  }
 
   // Verificar si el botón pidió salir
   if (!statemachine->flags.dev) {
@@ -299,6 +333,7 @@ void EstadoDESARROLLADOR::onExit() {
   statemachine->flags.dev = false;
   primera_vez = true;
   if (devWeb) {
+    devWeb->end();
     delete devWeb;
     devWeb = nullptr;
   }

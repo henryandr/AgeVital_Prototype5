@@ -17,6 +17,7 @@ class DevWebOTA {
 
   void begin();
   void handle();
+  void end();  // Limpieza: detiene servidor y mDNS
 };
 
 #endif

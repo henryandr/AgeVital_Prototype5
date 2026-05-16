@@ -1,5 +1,7 @@
 #include "DevWebOTA.h"
 
+#include <ESPmDNS.h>
+
 #include "AppConfig.h"
 #include "TokenManager.h"
 #include "WiFiManager.h"
@@ -10,6 +12,9 @@ const char HTML_PAGE[] PROGMEM = R"=====(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>AgeVital Dev</title>
 <style>
 body{font-family:Arial;margin:20px;background:#f0f0f0}
@@ -146,13 +151,16 @@ void DevWebOTA::begin() {
   Serial.println("\n=== MODO DESARROLLADOR ACTIVADO ===\n");
 
   if (!wifiManager.connect()) {
-    wifiManager.createAP();
+    wifiManager.createAP(appConfig.hostname);
   }
 
   // ===== RUTAS =====
 
   server->on("/", HTTP_GET, [this]() {
     Serial.println("RESPUESTA GET / EXITOSA");
+    server->sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    server->sendHeader("Pragma", "no-cache");
+    server->sendHeader("Expires", "0");
     server->send_P(200, "text/html", HTML_PAGE);
   });
 
@@ -290,6 +298,12 @@ void DevWebOTA::begin() {
                  "</div></body></html>");
   });
 
+  // ===== Ruta Identificar Dispositivo =====
+  server->on("/identify", HTTP_GET, [this]() {
+    Serial.println("[DevWebOTA] Identificando dispositivo — parpadeo OLED");
+    server->send(200, "text/plain", "Parpadeando OLED...");
+  });
+
   // Ruta para OTA -- Esto no se toca a menos que quieras personalizar el proceso de actualización
   server->on(
       "/ota", HTTP_POST,
@@ -323,8 +337,18 @@ void DevWebOTA::begin() {
       });
 
   server->begin();
+  MDNS.addService("http", "tcp", 80);  // Service discovery para mDNS
   Serial.println("Servidor web iniciado en puerto 80\n");
   initialized = true;
 }
 
 void DevWebOTA::handle() { server->handleClient(); }
+
+void DevWebOTA::end() {
+  if (initialized) {
+    server->stop();
+    MDNS.end();
+    initialized = false;
+    Serial.println("[DevWebOTA] Servidor y mDNS detenidos");
+  }
+}

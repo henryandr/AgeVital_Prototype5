@@ -38,6 +38,8 @@ ButtonHandler buttonHandler(BUTTON_PIN);
 StateMachine stateMachine;
 SensorManager sensorManager;
 
+SET_LOOP_TASK_STACK_SIZE(16384);  // 16KB stack para soportar WiFiClientSecure + JSON
+
 void setup() {
   Serial.begin(115200);
   Serial.println("\n=== TARS1 ===");
@@ -66,14 +68,8 @@ void setup() {
   // Inicializar buffer del filtro de lux
   sensorManager.begin();
 
-  stateMachine.flags.dev = false;
-
   // Arrancar máquina de estados
-  if (stateMachine.flags.dev) {
-    stateMachine.begin(new EstadoDESARROLLADOR());
-  } else {
-    stateMachine.begin(new EstadoINICIO());
-  }
+  stateMachine.begin(new EstadoINICIO());
 }
 
 void loop() {

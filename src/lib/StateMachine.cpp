@@ -2,16 +2,12 @@
 
 StateMachine::StateMachine() {
   currentState = nullptr;
-  previousState = nullptr;
 }
 
 StateMachine::~StateMachine() {
   if (currentState) {
     currentState->onExit();
     delete currentState;
-  }
-  if (previousState) {
-    delete previousState;
   }
 }
 
@@ -42,7 +38,6 @@ void StateMachine::ChangeState(State* newState) {
 
     if (currentState) {
       currentState->onExit();
-      previousState = currentState;
       delete currentState;
     }
 

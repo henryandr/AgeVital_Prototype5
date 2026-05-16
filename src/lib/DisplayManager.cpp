@@ -4,6 +4,7 @@
 #include <WiFi.h>
 
 #include "StateMachine.h"
+#include "AppConfig.h"
 #include "WiFiManager.h"
 
 extern Adafruit_SSD1306 display;
@@ -111,35 +112,54 @@ void displayStateInfo(const char* estado) {
 
 void displayDeveloperInfo() {
   display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
   display.setTextSize(1);
+
+  // Línea 0: Título
   display.setCursor(0, 0);
-  display.println("Modo Desarrollador");
+  display.println("DESARROLLADOR");
   display.drawLine(0, 9, 128, 9, SSD1306_WHITE);
 
+  // Línea 1: IP
   display.setCursor(0, 12);
+  display.print("IP: ");
+  display.println(wifiManager.getIP());
+
+  // Línea 2: Red WiFi o modo AP
+  display.setCursor(0, 22);
   if (WiFi.status() == WL_CONNECTED) {
-    display.print("WiFi: ");
-    display.setCursor(0, 21);
-    display.println(WiFi.localIP().toString());
+    display.print("Red: ");
+    String ssid = WiFi.SSID();
+    if (ssid.length() > 13) ssid = ssid.substring(0, 13);
+    display.println(ssid);
   } else if (WiFi.getMode() == WIFI_AP) {
-    display.println("AP: ESP-HOTSPOT");
-    display.setCursor(0, 21);
-    display.println(WiFi.softAPIP().toString());
+    display.print("AP: TARS-");
+    display.println(appConfig.hostname);
+  } else {
+    display.println("Sin conexion");
   }
 
-  display.drawLine(0, 30, 128, 30, SSD1306_WHITE);
-  display.setCursor(0, 33);
-  display.print("T:");
-  display.print(stateMachine.sensors.temp, 1);
-  display.setCursor(64, 33);
-  display.print("H:");
-  display.println(stateMachine.sensors.hum, 1);
-  display.setCursor(0, 42);
-  display.print("L:");
-  display.print(stateMachine.sensors.lux, 1);
-  display.setCursor(64, 42);
-  display.print("R:");
-  display.println(stateMachine.sensors.dbValue, 1);
+  // Línea 3: Estado de agente y keyrock
+  display.setCursor(0, 32);
+  display.print("Agente:");
+  display.print(appConfig.useAgent ? "ON" : "OFF");
+  display.print(" Keyr:");
+  display.println(appConfig.skipToken ? "OFF" : "ON");
+
+  display.drawLine(0, 41, 128, 41, SSD1306_WHITE);
+
+  // Línea 4: Hostname
+  display.setCursor(0, 44);
+  display.print("Host: ");
+  display.print(appConfig.hostname);
+  display.println(".local");
+
+  // Línea 5: Intervalo de envío
+  display.setCursor(0, 54);
+  display.print("Envio c/");
+  display.print(appConfig.intervaloEnvio / 1000);
+  display.print("s | RSSI:");
+  display.println(WiFi.RSSI());
 
   display.display();
 }

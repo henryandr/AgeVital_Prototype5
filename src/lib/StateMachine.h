@@ -12,7 +12,6 @@ struct Flags {
   bool envio = false;
   bool dev = false;
   bool envio_programado = false;
-  volatile bool boton_presionado = false;
 };
 
 // Estructura de tiempos
@@ -35,7 +34,6 @@ struct SensorData {
 class StateMachine {
  private:
   State* currentState;
-  State* previousState;
 
  public:
   // Definimos las estructuras globales
@@ -58,7 +56,6 @@ class StateMachine {
 
   // Getters de los estados actual y previo
   State* getCurrentState() const { return currentState; }
-  State* getPreviousState() const { return previousState; }
   const char* getCurrentStateName();
 };
 
