@@ -10,11 +10,11 @@ class WiFiManager {
   Preferences prefs;
 
   // Access Point — password fija, SSID se genera dinámicamente en createAP()
-  const char* apPass = "12345678";
+  const char *apPass = "12345678";
 
   // Control de reconexión
   unsigned long lastReconnectAttempt = 0;
-  static const unsigned long RECONNECT_INTERVAL = 30000;  // 30s entre intentos
+  static const unsigned long RECONNECT_INTERVAL = 30000; // 30s entre intentos
 
  public:
   // Conecta a WiFi usando credenciales de NVS. Bloqueante solo para arranque.
@@ -32,21 +32,20 @@ class WiFiManager {
 
     Serial.printf("[WiFiManager] Conectando a: %s\n", ssid.c_str());
     WiFi.mode(WIFI_STA);
-    WiFi.persistent(false);       // No escribir credenciales en flash (usamos NVS)
-    WiFi.setAutoReconnect(true);  // Reconexión automática del stack WiFi
-    WiFi.setSleep(false);         // Desactivar modem sleep para conexión estable
+    WiFi.persistent(false);      // No escribir credenciales en flash (usamos NVS)
+    WiFi.setAutoReconnect(true); // Reconexión automática del stack WiFi
+    WiFi.setSleep(false);        // Desactivar modem sleep para conexión estable
     WiFi.begin(ssid.c_str(), pass.c_str());
 
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
-      delay(500);
       Serial.print(".");
       attempts++;
     }
 
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.printf("\n[WiFiManager] Conectado! IP: %s | RSSI: %d dBm\n",
-                    WiFi.localIP().toString().c_str(), WiFi.RSSI());
+      Serial.printf("\n[WiFiManager] Conectado! IP: %s | RSSI: %d dBm\n", WiFi.localIP().toString().c_str(),
+                    WiFi.RSSI());
       return true;
     } else {
       Serial.println("\n[WiFiManager] Conexión fallida");
@@ -56,7 +55,7 @@ class WiFiManager {
   }
 
   // Crea Access Point con nombre dinámico basado en hostname
-  void createAP(const String& hostname) {
+  void createAP(const String &hostname) {
     String apSSID = "TARS-" + hostname;
     Serial.println("[WiFiManager] Creando Access Point...");
     WiFi.mode(WIFI_AP);
@@ -78,7 +77,7 @@ class WiFiManager {
     WiFi.reconnect();
   }
 
-  void saveCredentials(const String& newSSID, const String& newPass) {
+  void saveCredentials(const String &newSSID, const String &newPass) {
     prefs.begin("agevital", false);
     prefs.putString("ssid", newSSID);
     prefs.putString("pass", newPass);

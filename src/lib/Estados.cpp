@@ -7,7 +7,7 @@
 #include "TokenManager.h"
 #include "WiFiManager.h"
 
-DevWebOTA* devWeb = nullptr;
+DevWebOTA *devWeb = nullptr;
 
 // ========================================
 // IMPLEMENTACIÓN ESTADO INICIO
@@ -40,7 +40,7 @@ void EstadoINICIO::execute() {
   Serial.println("Estado: INICIO");
 
   // Si esta en la zona donde se puede conectar a WiFi, intenta conectarse
-  if (wifiManager.connect(30)) {
+  if (wifiManager.connect(10)) {
     Serial.println("[INICIO] WiFi listo para envío de datos");
     MDNS.begin(appConfig.hostname.c_str());
     Serial.printf("[mDNS] Activo en http://%s.local\n", appConfig.hostname.c_str());
@@ -62,7 +62,7 @@ void EstadoINICIO::onExit() {
   firstRun = false;
 }
 
-const char* EstadoINICIO::getName() { return "INICIO"; }
+const char *EstadoINICIO::getName() { return "INICIO"; }
 
 // ========================================
 // IMPLEMENTACIÓN ESTADO LECTURA
@@ -119,7 +119,7 @@ void EstadoLECTURA::onExit() {
   statemachine->flags.lectura = false;
 }
 
-const char* EstadoLECTURA::getName() { return "LECTURA"; }
+const char *EstadoLECTURA::getName() { return "LECTURA"; }
 
 // ========================================
 // IMPLEMENTACIÓN ESTADO ENVIO
@@ -207,7 +207,7 @@ void EstadoENVIO::execute() {
   Serial.println(payload);
 
   // WiFiClientSecure en heap para no desbordar el stack (~16KB de buffers TLS)
-  WiFiClientSecure* client = new WiFiClientSecure();
+  WiFiClientSecure *client = new WiFiClientSecure();
   if (!client) {
     Serial.println("[ENVIO] Error: sin memoria para WiFiClientSecure");
     statemachine->clocks.proximo_envio = now + appConfig.intervaloReintento;
@@ -235,7 +235,7 @@ void EstadoENVIO::execute() {
     delete client;
 
     if (tokenManager.ensureValidToken()) {
-      WiFiClientSecure* retryClient = new WiFiClientSecure();
+      WiFiClientSecure *retryClient = new WiFiClientSecure();
       if (retryClient) {
         retryClient->setInsecure();
         HTTPClient retryhttp;
@@ -256,7 +256,7 @@ void EstadoENVIO::execute() {
     statemachine->clocks.proximo_envio = now + appConfig.intervaloEnvio;
     statemachine->flags.envio_programado = true;
     statemachine->ChangeState(new EstadoLECTURA());
-    return;  // Evitar doble ChangeState
+    return; // Evitar doble ChangeState
   } else {
     Serial.printf("✗ Error en envío: %s\n", http.errorToString(httpResponseCode).c_str());
   }
@@ -273,7 +273,7 @@ void EstadoENVIO::onExit() {
   statemachine->flags.envio = false;
 }
 
-const char* EstadoENVIO::getName() { return "ENVIO"; }
+const char *EstadoENVIO::getName() { return "ENVIO"; }
 
 // ========================================
 // IMPLEMENTACIÓN ESTADO DESARROLLADOR
@@ -334,11 +334,7 @@ void EstadoDESARROLLADOR::onExit() {
   primera_vez = true;
   if (devWeb) {
     devWeb->end();
-    // NO hacer delete devWeb: las rutas de WebServer capturan 'this'
-    // via lambdas. Si se destruye y recrea en otra dirección de heap,
-    // los lambdas viejos apuntan a memoria liberada → crash.
-    // devWeb se mantiene como singleton reutilizable.
   }
 }
 
-const char* EstadoDESARROLLADOR::getName() { return "DESARROLLADOR"; }
+const char *EstadoDESARROLLADOR::getName() { return "DESARROLLADOR"; }

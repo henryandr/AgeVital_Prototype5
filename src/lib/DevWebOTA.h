@@ -8,17 +8,17 @@
 #include <WiFi.h>
 
 class DevWebOTA {
-private:
+ private:
   WebServer *server;
   bool initialized;
-  bool routesRegistered; // Las rutas se registran UNA sola vez
+  bool routesRegistered;
 
-public:
+ public:
   DevWebOTA(WebServer *srv);
 
   void begin();
   void handle();
-  void end(); // Limpieza: detiene servidor y mDNS
+  void end();
 };
 
 #endif
