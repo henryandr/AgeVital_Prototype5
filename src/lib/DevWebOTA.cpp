@@ -46,7 +46,8 @@ Configura WiFi, parametros del sistema o actualiza el firmware
 <label>Nombre de Red (SSID)</label>
 <input type="text" name="ssid" placeholder="Nombre de Red (SSID)" required>
 <label>Contrasena WiFi</label>
-<input type="password" name="pass" placeholder="Contrasena WiFi" required>
+<input type="password" name="pass" placeholder="Dejar vacio para redes abiertas">
+<small style="color:#888;font-size:12px">Dejar vacio si la red no tiene contrasena</small>
 <button type="submit">💾 Guardar y Reiniciar</button>
 </form>
 </div>

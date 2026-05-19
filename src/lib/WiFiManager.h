@@ -35,7 +35,11 @@ class WiFiManager {
     WiFi.persistent(false);      // No escribir credenciales en flash (usamos NVS)
     WiFi.setAutoReconnect(true); // Reconexión automática del stack WiFi
     WiFi.setSleep(false);        // Desactivar modem sleep para conexión estable
-    WiFi.begin(ssid.c_str(), pass.c_str());
+    if (pass.length() > 0) {
+      WiFi.begin(ssid.c_str(), pass.c_str());
+    } else {
+      WiFi.begin(ssid.c_str());  // Red abierta: sin contraseña
+    }
 
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
