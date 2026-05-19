@@ -7,7 +7,6 @@
 #include "StateMachine.h"
 #include "WiFiManager.h"
 
-
 extern Adafruit_SSD1306 display;
 extern StateMachine stateMachine;
 extern WiFiManager wifiManager;
@@ -39,8 +38,7 @@ void drawAllSensors() {
 }
 
 void updateDisplay() {
-  if (!stateMachine.isDisplayOn)
-    return;
+  if (!stateMachine.isDisplayOn) return;
 
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
@@ -48,56 +46,56 @@ void updateDisplay() {
   displayStateInfo("LECTURA");
 
   switch (stateMachine.screenMode) {
-  case 0:
-    drawAllSensors();
-    break;
+    case 0:
+      drawAllSensors();
+      break;
 
-  case 1:
-    display.setTextSize(1);
-    display.setCursor(0, 20);
-    display.println("TEMP/HUM:");
+    case 1:
+      display.setTextSize(1);
+      display.setCursor(0, 20);
+      display.println("TEMP/HUM:");
 
-    display.setTextSize(1);
-    display.setCursor(0, 35);
-    display.print(stateMachine.sensors.temp, 1);
-    display.println(" C TEMP");
+      display.setTextSize(1);
+      display.setCursor(0, 35);
+      display.print(stateMachine.sensors.temp, 1);
+      display.println(" C TEMP");
 
-    display.setCursor(0, 45);
-    display.print(stateMachine.sensors.hum, 1);
-    display.println(" % HUM");
-    break;
+      display.setCursor(0, 45);
+      display.print(stateMachine.sensors.hum, 1);
+      display.println(" % HUM");
+      break;
 
-  case 2:
-    display.setTextSize(1);
-    display.setCursor(0, 17);
-    display.println("LUZ:");
-    display.setTextSize(2);
-    display.print(stateMachine.sensors.lux, 1);
-    display.println(" lux");
-    break;
+    case 2:
+      display.setTextSize(1);
+      display.setCursor(0, 17);
+      display.println("LUZ:");
+      display.setTextSize(2);
+      display.print(stateMachine.sensors.lux, 1);
+      display.println(" lux");
+      break;
 
-  case 3:
-    display.setTextSize(1);
-    display.setCursor(0, 17);
-    display.println("RUIDO:");
+    case 3:
+      display.setTextSize(1);
+      display.setCursor(0, 17);
+      display.println("RUIDO:");
 
-    display.setTextSize(2);
-    display.setCursor(0, 27);
-    display.print(stateMachine.sensors.dbValue, 1);
-    display.println(" dBA");
+      display.setTextSize(2);
+      display.setCursor(0, 27);
+      display.print(stateMachine.sensors.dbValue, 1);
+      display.println(" dBA");
 
-    display.setTextSize(1);
-    display.setCursor(0, 50);
-    display.print("V: ");
-    display.print(stateMachine.sensors.voltage, 3);
-    display.println(" V");
-    break;
+      display.setTextSize(1);
+      display.setCursor(0, 50);
+      display.print("V: ");
+      display.print(stateMachine.sensors.voltage, 3);
+      display.println(" V");
+      break;
   }
 
   display.display();
 }
 
-void displayStateInfo(const char *estado) {
+void displayStateInfo(const char* estado) {
   display.setTextSize(1);
   display.setCursor(0, 0);
   display.print("Estado: ");
@@ -132,14 +130,12 @@ void displayDeveloperInfo() {
   if (WiFi.status() == WL_CONNECTED) {
     display.print("Red:");
     String ssid = WiFi.SSID();
-    if (ssid.length() > 17)
-      ssid = ssid.substring(0, 17);
+    if (ssid.length() > 17) ssid = ssid.substring(0, 17);
     display.println(ssid);
   } else if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
     display.print("AP:");
     String apName = "TARS-" + appConfig.hostname;
-    if (apName.length() > 18)
-      apName = apName.substring(0, 18);
+    if (apName.length() > 18) apName = apName.substring(0, 18);
     display.println(apName);
   } else {
     display.println("Sin conexion");
@@ -152,16 +148,20 @@ void displayDeveloperInfo() {
   display.print(" Key:");
   display.print(appConfig.skipToken ? "OFF" : "ON ");
   display.print(" E:");
-  display.print(appConfig.intervaloEnvio / 1000);
-  display.println("s");
+  if (appConfig.intervaloEnvio >= 60000) {
+    display.print(appConfig.intervaloEnvio / 60000);
+    display.println("m");
+  } else {
+    display.print(appConfig.intervaloEnvio / 1000);
+    display.println("s");
+  }
 
   display.drawLine(0, 41, 128, 41, SSD1306_WHITE);
 
   // Línea 4: Hostname (truncado si es largo)
   display.setCursor(0, 44);
   String hostLine = appConfig.hostname;
-  if (hostLine.length() > 15)
-    hostLine = hostLine.substring(0, 15);
+  if (hostLine.length() > 15) hostLine = hostLine.substring(0, 15);
   display.print(hostLine);
   display.println(".local");
 
