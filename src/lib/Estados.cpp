@@ -40,7 +40,7 @@ void EstadoINICIO::execute() {
   Serial.println("Estado: INICIO");
 
   // Si esta en la zona donde se puede conectar a WiFi, intenta conectarse
-  if (wifiManager.connect(10)) {
+  if (wifiManager.connect(16)) {
     Serial.println("[INICIO] WiFi listo para envío de datos");
     MDNS.begin(appConfig.hostname.c_str());
     Serial.printf("[mDNS] Activo en http://%s.local\n", appConfig.hostname.c_str());

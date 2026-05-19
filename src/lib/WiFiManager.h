@@ -19,7 +19,7 @@ class WiFiManager {
  public:
   // Conecta a WiFi usando credenciales de NVS. Bloqueante solo para arranque.
   // Retorna false si no hay credenciales o si falla la conexión.
-  bool connect(int maxAttempts = 20) {
+  bool connect(int maxAttempts = 16) {
     prefs.begin("agevital", true);
     String ssid = prefs.getString("ssid", "");
     String pass = prefs.getString("pass", "");
@@ -39,6 +39,7 @@ class WiFiManager {
 
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
+      delay(500);
       Serial.print(".");
       attempts++;
     }

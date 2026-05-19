@@ -65,6 +65,20 @@ void setup() {
   // Configuración desde NVS
   appConfig.begin();
 
+  // Splash screen
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(2);
+  display.setCursor(10, 10);
+  display.println("AgeVital");
+  display.setTextSize(1);
+  display.setCursor(35, 35);
+  display.println("TARS v1.5");
+  display.setCursor(5, 50);
+  display.print("Modulo: ");
+  display.println(appConfig.hostname);
+  display.display();
+
   // Inicializar buffer del filtro de lux
   sensorManager.begin();
 
