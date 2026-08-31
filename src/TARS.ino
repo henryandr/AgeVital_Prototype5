@@ -1,116 +1,105 @@
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include <ArduinoJson.h>
-#include <DFRobot_B_LUX_V30B.h>
-#include <EEPROM.h>
-#include <ESPmDNS.h>
-#include <HTTPClient.h>
-#include <WebServer.h>
-#include <WiFi.h>
-#include <Wire.h>
+#include <Adafruit_GFX.h> 
+#include <Adafruit_SSD1306.h> 
+#include <ArduinoJson.h> 
+#include <DFRobot_B_LUX_V30B.h> 
+#include <EEPROM.h> 
+#include <ESPmDNS.h> 
+#include <HTTPClient.h> 
+#include <WebServer.h> 
+#include <WiFi.h> 
+#include <Wire.h> 
 
-#include "AppConfig.h"
-#include "ButtonHandler.h"
-#include "ClosedCube_HDC1080.h"
-#include "DisplayManager.h"
-#include "Estados.h"
-#include "PayloadBuilder.h"
-#include "SensorManager.h"
-#include "State.h"
-#include "StateMachine.h"
-#include "TokenManager.h"
+#include "AppConfig.h" 
+#include "ButtonHandler.h" 
+#include "BuildConfig.h"
+#include "ClosedCube_HDC1080.h" 
+#include "DisplayManager.h" 
+#include "Estados.h" 
+#include "ITransport.h"
+#include "PayloadBuilder.h" 
+#include "SensorManager.h" 
+#include "State.h" 
+#include "StateMachine.h" 
+#include "TokenManager.h" 
 #include "WiFiManager.h"
 
-// ===== HARDWARE =====
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define BUTTON_PIN 27 // IMPORTANTE: el pin 27 es del TARS original, el pin 4 (button pcbs)
+#define SCREEN_WIDTH 128 
+#define SCREEN_HEIGHT 64 
+#define BUTTON_PIN 27 
 
-// ===== OBJETOS GLOBALES =====
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-ClosedCube_HDC1080 hdc1080;
-DFRobot_B_LUX_V30B luxSensor(&Wire, 5);
-WebServer server(80);
-AppConfig appConfig;
-WiFiManager wifiManager;
-TokenManager tokenManager;
-ButtonHandler buttonHandler(BUTTON_PIN);
-StateMachine stateMachine;
-SensorManager sensorManager;
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1); 
+ClosedCube_HDC1080 hdc1080; 
+DFRobot_B_LUX_V30B luxSensor(&Wire, 5); // Tu librería preferida
+WebServer server(80); 
+AppConfig appConfig; 
+WiFiManager wifiManager; 
+TokenManager tokenManager; 
+ButtonHandler buttonHandler(BUTTON_PIN); 
+StateMachine stateMachine; 
+SensorManager sensorManager; 
 
-SET_LOOP_TASK_STACK_SIZE(16384); // 16KB stack para soportar WiFiClientSecure + JSON
+// ===== TRANSPORTE: seleccionado en compilación via BuildConfig.h =====
+#if defined(BUILD_WIFI)
+  #include "WiFiTransport.h"
+  WiFiTransport transportImpl;
+#elif defined(BUILD_LORA)
+  // LoRaTransport pendiente: la prioridad actual es WiFi.
+  // Cuando esté listo: #include "LoRaTransport.h" / LoRaTransport transportImpl;
+  #error "BUILD_LORA aun no esta implementado en este refactor (prioridad WiFi)"
+#endif
+ITransport* transport = &transportImpl;
 
-void setup() {
-  Serial.begin(115200);
-  Serial.println("\n=== TARS1 ===");
-  Serial.println("Con Máquina de Estados Modular\n");
+SET_LOOP_TASK_STACK_SIZE(16384); 
 
+void setup() { 
+  Serial.begin(115200); 
   Wire.begin(21, 22);
-
-  // Sensores
-  hdc1080.begin(0x40);
-  Wire.setClock(50000);
-  luxSensor.begin();
+  Wire.setTimeOut(1000); 
+  
+  hdc1080.begin(0x40); 
+  Wire.setClock(50000); 
+  luxSensor.begin(); 
   analogReadResolution(12);
 
-  // Pantalla
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Serial.println("Error OLED");
-    while (1);
-  }
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) while (1); 
 
-  // Botón
   buttonHandler.begin();
-
-  // Configuración desde NVS
   appConfig.begin();
-
-  // Splash screen
-  display.clearDisplay();
-  display.setTextColor(SSD1306_WHITE);
-  display.setTextSize(2);
-  display.setCursor(10, 10);
-  display.println("AgeVital");
-  display.setTextSize(1);
-  display.setCursor(35, 35);
-  display.println("TARS v1.5");
-  display.setCursor(5, 50);
-  display.print("Modulo: ");
-  display.println(appConfig.hostname);
-  display.display();
-
-  // Inicializar buffer del filtro de lux
   sensorManager.begin();
+  transport->begin();
 
-  // Arrancar máquina de estados
-  stateMachine.begin(new EstadoINICIO());
+  // Splash antes de intentar conectar WiFi (que bloquea hasta ~8s dentro de
+  // EstadoINICIO::execute): sin esto, el OLED se queda con contenido basura
+  // durante esa espera en vez de mostrar algo reconocible.
+  displaySplashScreen();
+
+  stateMachine.begin(new EstadoINICIO()); 
 }
 
-void loop() {
+void loop() { 
   ButtonHandler::Event event = buttonHandler.update();
 
-  if (event == ButtonHandler::SHORT_PRESS) {
+  if (event != ButtonHandler::NONE) { 
+    // Actualizamos el reloj de interacción siempre que se presione algo
     stateMachine.clocks.ultima_interaccion = millis();
-
+    
+    // Si la pantalla estaba apagada, la despertamos
     if (!stateMachine.isDisplayOn) {
-      stateMachine.isDisplayOn = true;
-    } else {
-      stateMachine.screenMode++;
-      if (stateMachine.screenMode > 3) stateMachine.screenMode = 0;
-    }
-    stateMachine.needsUpdate = true;
-    Serial.println("[Button] Short press -> cambiar pantalla");
-  }
-
-  if (event == ButtonHandler::LONG_PRESS) {
-    if (stateMachine.flags.dev) {
-      Serial.println("[Button] Long press -> salir de DESARROLLADOR");
-      stateMachine.flags.dev = false;
-    } else {
-      Serial.println("[Button] Long press -> entrar a DESARROLLADOR");
-      stateMachine.flags.dev = true;
+        stateMachine.isDisplayOn = true;
+        stateMachine.needsUpdate = true;
+        
+        // REQUERIMIENTO: Si el evento fue un clic corto para despertar la pantalla, 
+        // lo anulamos aquí mismo para que NO avance a la siguiente vista de sensores.
+        if (event == ButtonHandler::SHORT_PRESS) {
+            event = ButtonHandler::NONE; 
+        }
     }
   }
 
-  stateMachine.update();
+  // Puente: Pasamos el evento a los estados para que ellos decidan qué hacer.
+  // Si anulamos el clic corto arriba, a la máquina de estados llegará como "NONE"
+  // y la pantalla se quedará exactamente donde la dejaste.
+  stateMachine.currentEvent = event;
+  stateMachine.update(); 
+  stateMachine.currentEvent = ButtonHandler::NONE; // Limpiamos el evento
 }
